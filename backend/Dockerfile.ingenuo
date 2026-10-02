@@ -1,0 +1,8 @@
+# imagen de node
+FROM node:20
+
+# copia todo el contexto
+COPY . .
+
+# instala dependencias
+RUN npm install
