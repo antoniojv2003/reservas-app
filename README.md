@@ -47,3 +47,15 @@ Al realizar la reserva desde la interfaz web, la solicitud HTTP (POST /api/reser
 desde el cual fue descargada la SPA. Dado que la petición no cruza fronteras de protocolo, host ni puerto, el navegador la considera una solicitud del mismo origen (Same-Origin).
 En consecuencia, no aplica la política restrictiva de CORS ni se dispara una petición preliminar de comprobación previa (preflight request con método OPTIONS), fluyendo 
 la petición directamente a través del reverse proxy de Nginx hacia el contenedor reservas-api.
+
+
+## Punto 6 del tp3: consulta a la api directamente y mediante el nginx usando /api/
+Las pruebas validaron que Nginx funciona como un reverse proxy transparente, entregando la misma respuesta tanto al consultar la API de forma directa (localhost:3001/salas) como 
+a través del frontend (localhost:3000/api/salas). Esto se debe a la barra final en proxy_pass http://${API_HOST}:${API_PORT}/;, que recorta el prefijo /api y envía la ruta limpia 
+/salas a Express, evitando un error 404. A su vez, esta configuración centraliza la entrega de archivos estáticos y el consumo del backend bajo un mismo origen (Same-Origin), 
+prescindiendo de negociaciones de CORS y solicitudes OPTIONS.
+
+
+## Punto 7 del tp3: persistencia de los datos
+La prueba demostró que el ciclo de vida de los datos es independiente del ciclo de vida del contenedor: al destruir y recrear reservas-db, la información persistió intacta gracias al 
+uso del volumen nombrado reservas-db-data, permitiendo que la base retome su estado previo sin pérdida de registros.
