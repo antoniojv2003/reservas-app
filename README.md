@@ -36,3 +36,7 @@ Para crear este contenedor se usó el siguiente comando:
 La base de datos constituye la capa más interna y crítica de la arquitectura. Al prescindir del flag -p, sus puertos de escucha no se enlazan ni se exponen en la 
 interfaz del anfitrión (host), evitando accesos no autorizados desde redes externas. La única vía de comunicación permitida es interna a través de la red bridge 
 personalizada reservas-net, alcanzable exclusivamente por contenedores autorizados conectados a dicha red (como reservas-api).
+
+## Punto 4 del tp3: explicación de por qué el proceso termina en lugar de arrancar en estado degradado
+Nginx resuelve el upstream de proxy_pass una única vez, en tiempo de inicialización estricta al arrancar. Al omitir --network reservas-net, el contenedor opera en la red bridge
+predeterminada sin servidor DNS interno; al no poder resolver el nombre reservas-api, el proceso termina de forma inmediata con código 1 en lugar de arrancar en un estado degradado.

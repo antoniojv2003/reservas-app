@@ -24,10 +24,13 @@ FROM nginxinc/nginx-unprivileged:1.27-alpine
 # Requisito consigna 6: variables de runtime y filtro envsubst
 ENV API_HOST=reservas-api \
     API_PORT=3000 \
-    NGINX_ENVSUBST_FILTER=API_
+    NGINX_ENVSUBST_FILTER=^API_
 
 # Copia únicamente el build estático generado a la raíz servida por Nginx
 COPY --from=build /app/dist /usr/share/nginx/html
+
+# Copia la plantilla oficial al directorio de plantillas de Nginx
+COPY nginx/templates/default.conf.template /etc/nginx/templates/default.conf.template
 
 EXPOSE 8080
 
