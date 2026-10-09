@@ -40,3 +40,10 @@ personalizada reservas-net, alcanzable exclusivamente por contenedores autorizad
 ## Punto 4 del tp3: explicación de por qué el proceso termina en lugar de arrancar en estado degradado
 Nginx resuelve el upstream de proxy_pass una única vez, en tiempo de inicialización estricta al arrancar. Al omitir --network reservas-net, el contenedor opera en la red bridge
 predeterminada sin servidor DNS interno; al no poder resolver el nombre reservas-api, el proceso termina de forma inmediata con código 1 en lugar de arrancar en un estado degradado.
+
+
+## Punto 5 del tp3: solicitud se dirige a /api/reservas sobre el mismo origen (localhost:3000 o 127.0.0.1:3000) y no al backend directamente
+Al realizar la reserva desde la interfaz web, la solicitud HTTP (POST /api/reservas) se envía de manera relativa al mismo origen ([http://127.0.0.1:3000/api/reservas](http://127.0.0.1:3000/api/reservas)) 
+desde el cual fue descargada la SPA. Dado que la petición no cruza fronteras de protocolo, host ni puerto, el navegador la considera una solicitud del mismo origen (Same-Origin).
+En consecuencia, no aplica la política restrictiva de CORS ni se dispara una petición preliminar de comprobación previa (preflight request con método OPTIONS), fluyendo 
+la petición directamente a través del reverse proxy de Nginx hacia el contenedor reservas-api.
