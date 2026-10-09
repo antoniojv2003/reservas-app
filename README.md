@@ -59,3 +59,37 @@ prescindiendo de negociaciones de CORS y solicitudes OPTIONS.
 ## Punto 7 del tp3: persistencia de los datos
 La prueba demostró que el ciclo de vida de los datos es independiente del ciclo de vida del contenedor: al destruir y recrear reservas-db, la información persistió intacta gracias al 
 uso del volumen nombrado reservas-db-data, permitiendo que la base retome su estado previo sin pérdida de registros.
+
+
+## Consigna 8: Orden de arranque y dependencias del sistema
+
+### Orden de inicialización requerido
+El orden estricto de arranque manual para el correcto funcionamiento del sistema es:
+red → volumen → base → API → frontend
+
+
+### Diagnóstico de fallas al invertir pasos
+
+* **Invertir Red -  Contenedores:**  
+  Si se intenta ejecutar cualquier contenedor especificando `--network reservas-net` antes de haber creado la red bridge, el daemon de Docker aborta el comando inmediatamente con 
+  el error: `network reservas-net not found`.
+
+* **Invertir Volumen -  Base de Datos:**  
+  Aunque Docker crea volúmenes nombrados de forma automática si no existen previamente al hacer `-v reservas-db-data:/var/lib/mysql`, omitir su creación explícita o desacoplarlo 
+  rompe el control de infraestructura como código y la persistencia predeterminada. Si el contenedor se inicializa sin el montaje, los datos residen en la capa volátil de 
+  escritura del contenedor y se destruyen permanentemente al removerlo.
+
+* **Invertir Base de Datos - API:**  
+  Si `reservas-api` arranca antes de que `reservas-db` esté lista y escuchando en el puerto 3306, el proceso de Node/Express falla de inmediato al ejecutar las migraciones iniciales 
+  de Sequelize o la siembra de datos (`SEED_DEMO=true`). El contenedor finaliza con error de conexión `ECONNREFUSED reservas-db:3306` o fallo de resolución DNS interno.
+
+* **Invertir API - Frontend:**  
+  Si `reservas-frontend` se inicia antes que `reservas-api`, el proceso maestro de Nginx falla fatalmente durante su inicialización estricta. Al no encontrar el hostname 
+  `reservas-api` en el servidor DNS embebido de Docker, arroja `[emerg] host not found in upstream "reservas-api"` y el contenedor pasa a estado `Exited (1)`.
+
+
+### Limitación del despliegue actual
+Actualmente, el orden de arranque, las dependencias de red, el montaje de volúmenes y las variables de entorno residen exclusivamente en la memoria y criterio del operador 
+que levanta la aplicación, y no en un archivo declarativo ejecutable.  
+Esta limitación se resuelve la semana siguiente mediante la incorporación de **Docker Compose**, permitiendo orquestar todo el stack de forma declarativa a través de 
+directivas como `depends_on`, `networks` y `volumes` dentro de un único archivo `docker-compose.yml`.
