@@ -26,3 +26,13 @@ reemplaza cualquier patrón `$variable` en la configuración, consumiendo y deja
 | `reservas-api:ingenua` | `node:20` | 1.59GB | 0% (Línea base) | Se utilizó una imagen completa basada en Debian que incluye compiladores C/C++, Python y herramientas de compilación innecesarias en ejecución. Copia todo el contexto sin filtrar. |
 | `reservas-api:v1` | `node:20-alpine` | 205  MB | ~87% | Multi-stage build: las herramientas de instalación se aíslan en la etapa `deps` (`npm ci --omit=dev`), se descartan cachés y se usa Alpine Linux como base mínima final junto con `.dockerignore`. |
 | `reservas-frontend:v1` | `nginxinc/nginx-unprivileged:1.27-alpine` | 73.9 MB | ~96% | Multi-stage build completo: todo el runtime de Node.js, dependencias y código fuente de React/Vite se descartan tras compilar. La imagen final solo contiene Nginx ligero y los archivos estáticos de `dist/`. |
+
+
+## Punto 2 del tp3: creación del contenedor de la base de datos y justificación de la ausencia del parámetro -p
+
+Para crear este contenedor se usó el siguiente comando:
+`docker run -d --name reservas-db --network reservas-net -v reservas-db-data:/var/lib/mysql -e MYSQL_PASSWORD=reservas_pass -e MYSQL_DATABASE=reservasdb -e MYSQL_USER=reservas_user -e MYSQL_ROOT_PASSWORD=reservas_root_pass mysql:8.4`
+
+La base de datos constituye la capa más interna y crítica de la arquitectura. Al prescindir del flag -p, sus puertos de escucha no se enlazan ni se exponen en la 
+interfaz del anfitrión (host), evitando accesos no autorizados desde redes externas. La única vía de comunicación permitida es interna a través de la red bridge 
+personalizada reservas-net, alcanzable exclusivamente por contenedores autorizados conectados a dicha red (como reservas-api).
