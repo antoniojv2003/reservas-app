@@ -7,6 +7,14 @@ services:
       MYSQL_DATABASE: reservasdb
       MYSQL_USER: reservas_user
       MYSQL_PASSWORD: reservas_pass
+    healthcheck:
+        test:
+            - CMD-SHELL
+            - mysqladmin ping -h 127.0.0.1 -u root -p"$$MYSQL_ROOT_PASSWORD" --silent
+        interval: 5s
+        timeout: 5s
+        retries: 20
+        start_period: 40s
     volumes: [reservas-db-data:/var/lib/mysql]
     networks: [reservas-net]
 

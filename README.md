@@ -61,7 +61,7 @@ La prueba demostró que el ciclo de vida de los datos es independiente del ciclo
 uso del volumen nombrado reservas-db-data, permitiendo que la base retome su estado previo sin pérdida de registros.
 
 
-## Consigna 8: Orden de arranque y dependencias del sistema
+## Punto 8 del tp3: Orden de arranque y dependencias del sistema
 
 ### Orden de inicialización requerido
 El orden estricto de arranque manual para el correcto funcionamiento del sistema es:
@@ -93,3 +93,11 @@ Actualmente, el orden de arranque, las dependencias de red, el montaje de volúm
 que levanta la aplicación, y no en un archivo declarativo ejecutable.  
 Esta limitación se resuelve la semana siguiente mediante la incorporación de **Docker Compose**, permitiendo orquestar todo el stack de forma declarativa a través de 
 directivas como `depends_on`, `networks` y `volumes` dentro de un único archivo `docker-compose.yml`.
+
+
+## Punto 2 del tp4: explicación de parámetros y comandos en el healthcheck de reservas-db
+a) Con un solo $ la interpolación la realiza Compose al leer el archivo, y la contraseña queda escrita en la línea de comando del healthcheck, visible
+mediante docker inspect; con $$, Compose escribe un $ literal y la variable la expande el intérprete dentro del contenedor
+
+b) Por qué hace falta start_period: 40s: la primera inicialización del directorio de datos de MySQL es lenta y, sin ese período de gracia, el contenedor puede quedar marcado
+como unhealthy cuando en realidad se encontraba arrancando.
