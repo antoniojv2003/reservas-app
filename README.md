@@ -101,3 +101,16 @@ mediante docker inspect; con $$, Compose escribe un $ literal y la variable la e
 
 b) Por qué hace falta start_period: 40s: la primera inicialización del directorio de datos de MySQL es lenta y, sin ese período de gracia, el contenedor puede quedar marcado
 como unhealthy cuando en realidad se encontraba arrancando.
+
+
+## Punto 3 del tp4: por qué no corresponde instalar curl en la imagen solo para el healthcheck
+No corresponde instalar curl (ni utilidades similares) en la imagen exclusivamente para satisfacer el healthcheck por tres razones clave:
+
+1) Instalar paquetes adicionales a través de un gestor como apt o apk agranda innecesariamente el tamaño de la imagen final, rompiendo con el objetivo de optimización y 
+construcción eficiente visto en la Semana 2.
+
+2) Cada binario y librería añadida al sistema operativo base amplía la superficie expuesta a vulnerabilidades conocidas (CVEs) que luego son detectadas por herramientas de escaneo como Trivy.
+
+3) A partir de Node.js 18, la API de fetch viene incorporada globalmente de forma nativa en el runtime. El propio entorno de ejecución de la aplicación ya cuenta con los mecanismos necesarios 
+para realizar peticiones HTTP hacia 127.0.0.1:3000/health y mapear el resultado a un código de salida (exit 0 si la respuesta es 2xx / ok, o exit 1 en caso contrario), logrando una solución
+ sin dependencias externas añadidas.
