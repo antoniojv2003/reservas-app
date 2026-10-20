@@ -114,3 +114,9 @@ construcción eficiente visto en la Semana 2.
 3) A partir de Node.js 18, la API de fetch viene incorporada globalmente de forma nativa en el runtime. El propio entorno de ejecución de la aplicación ya cuenta con los mecanismos necesarios 
 para realizar peticiones HTTP hacia 127.0.0.1:3000/health y mapear el resultado a un código de salida (exit 0 si la respuesta es 2xx / ok, o exit 1 en caso contrario), logrando una solución
  sin dependencias externas añadidas.
+
+## Punto 4 del tp4:healthcheck del frontend con wget
+Se configuró el healthcheck del frontend sobre el servidor Nginx sin agregar paquetes adicionales.
+Al basarse en la imagen liviana de Alpine Linux, se aprovecha el binario wget que viene incluido dentro del conjunto de utilidades de BusyBox
+La prueba evalúa estrictamente la ruta /healthz servida por Nginx y no los endpoints de la API (/api/...). Esto asegura que la salud del servidor web refleje únicamente el estado de su propio
+proceso, evitando que contingencias temporales en el backend degraden el estado de salud del frontend.

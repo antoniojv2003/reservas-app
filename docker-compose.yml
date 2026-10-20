@@ -49,6 +49,12 @@ services:
     environment:
         API_HOST: reservas-api
         API_PORT: 3000
+    healthcheck:
+        test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8080/healthz"]
+        interval: 5s
+        timeout: 3s
+        retries: 5
+        start_period: 5s
     networks: [reservas-net]
 
 networks:
