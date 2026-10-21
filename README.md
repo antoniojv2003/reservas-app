@@ -200,3 +200,38 @@ Se aplicó la directiva `cap_drop: [ALL]` en los tres servicios para despojarlos
    [ERROR] [MY-010126] [Server] setgid: Operation not permitted
 
   
+## Consigna 11: Comparación entre despliegue manual (Semana 3) y Docker Compose (Semana 4)
+
+A continuación se detalla la transición arquitectónica entre los comandos imperativos de la Semana 3 (`docker run`) y la orquestación declarativa de la Semana 4 (`docker-compose.yml`):
+
+### 1. Qué desapareció
+
+* **La dependencia de la memoria humana y el orden manual:** En la Semana 3 era obligatorio recordar la secuencia estricta (`red -> volumen -> base de datos -> API -> frontend`) y colocar pausas arbitrarias a ciegas (como esperar 10 o 15 segundos a que MySQL termine de inicializar) para que la API no fallara con `ECONNREFUSED`.
+* **Los comandos individuales y flags repetitivos:** Se eliminaron las largas líneas de terminal con 14 flags acumulados (`docker network create`, `docker volume create`, `docker run -d --name ... --network ... -v ... -e ... -p ...`).
+* **Los fallos por condiciones de carrera al arrancar:** Se erradicó el error fatal de Nginx `[emerg] host not found in upstream "reservas-api"` provocado por levantar los servicios en desorden.
+* **Las credenciales fijadas en el historial de comandos:** Desaparecieron las contraseñas escritas directamente en la terminal interactiva de bash.
+* **El comando previo de construcción de imágenes:** Desapareció la necesidad de ejecutar `docker build -t ...` por separado antes de cada corrida; Compose unifica el build y la ejecución en un solo paso.
+
+---
+
+### 2. Qué apareció
+
+* **Fuente única de verdad declarativa (`docker-compose.yml`):** Todo el stack (servicios, redes, volúmenes, puertos y variables) queda versionado en un único archivo junto al código fuente del proyecto, auditable mediante Git y Pull Requests.
+* **Arranque determinista y sincronizado (`depends_on` + `condition: service_healthy`):** El orden de inicio ahora lo gestiona Compose a través del grafo de dependencias, garantizando que un servicio consumidor no arranque hasta que su dependencia esté lista para procesar tráfico.
+* **Chequeos de salud nativos (`healthcheck`):** Pruebas de diagnóstico ejecutadas dentro de cada contenedor sin añadir dependencias externas pesadas (`mysqladmin ping` por TCP, `node -e fetch()` nativo y `wget` de BusyBox).
+* **Gestión desacoplada de variables de entorno:** Separación formal entre el contrato público documentado (`.env.example`) y los valores confidenciales locales (`.env`), ignorados por `.gitignore` y validados estrictamente con la sintaxis `${VAR:?mensaje}`.
+* **Seguridad declarativa y mínimo privilegio:** Control granular de privilegios en el propio archivo mediante `cap_drop: [ALL]` y asignación selectiva de capabilities (`cap_add`) solo para el motor de base de datos (`CHOWN`, `SETUID`, `SETGID`, `DAC_OVERRIDE`, `FOWNER`).
+* **Gestión unificada del ciclo de vida:** Comandos estandarizados para todo el proyecto (`docker compose up -d --build`, `docker compose ps`, `docker compose logs -f` y `docker compose down`).
+
+---
+
+### Cuadro comparativo sintético
+
+| Aspecto | Semana 3 (`docker run` / CLI) | Semana 4 (`docker-compose.yml`) | Impacto en la operación |
+| :--- | :--- | :--- | :--- |
+| **Paradigma** | Imperativo (paso a paso) | Declarativo (estado deseado) | Reproducibilidad inmediata en cualquier entorno |
+| **Inicialización** | Manual y secuencial | Automatizada con `depends_on: service_healthy` | Eliminación de condiciones de carrera y caídas de upstream |
+| **Redes y Volúmenes** | Creación manual previa con nombres fijos | Declarados en bloques raíz (`networks:`, `volumes:`) | Automatización de infraestructura como código |
+| **Gestión de variables** | Flags `-e VAR=valor` dispersos | Centralizadas e interpoladas desde `.env` | Credenciales fuera del código y del historial de commits |
+| **Capabilities del kernel** | Privilegios por defecto de Docker | Restricción total con `cap_drop: [ALL]` | Reducción drástica de superficie de ataque |
+| **Comando de parada** | Múltiples `docker stop` y `docker rm` | `docker compose down` (conserva datos) | Ciclo de vida controlado y consistente |
