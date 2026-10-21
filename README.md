@@ -160,3 +160,25 @@ las tres capas (`reservas-db`, `reservas-api` y `reservas-frontend`), asegurando
    * **Secrets:** Se utilizan para almacenar credenciales confidenciales (`MYSQL_ROOT_PASSWORD`, `MYSQL_PASSWORD`, `DB_PASSWORD`). A diferencia de Compose, los Secrets en Kubernetes se almacenan
     de manera aislada (con opción de cifrado en reposo en `etcd`), su acceso se restringe mediante políticas de RBAC (Role-Based Access Control) y se montan en los Pods dentro de sistemas de archivos
      temporales en memoria RAM volátil (`tmpfs`), de modo que nunca quedan expuestos como cadenas de texto plano en los manifiestos de despliegue ni se escriben en el disco de los nodos worker.
+
+## Consigna 9: Revisión de seguridad y auditoría de vulnerabilidades
+
+Se llevó a cabo la inspección de seguridad sobre los servicios del stack conforme a los requerimientos de la consigna:
+
+### Tabla de auditoría de seguridad
+
+| Servicio | Usuario en ejecución (`docker compose exec <srv> id`) | Puertos en el Host (`docker compose ps`) | Exposición y Propósito | Vulnerabilidades SO Base (Trivy) | Vulnerabilidades Dependencias (Trivy) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`reservas-db`** | `mysql` (UID 999 / GID 999) | *Ninguno* (`3306/tcp, 33060/tcp`) | **Privado:** Sin publicación hacia el host; solo alcanzable mediante la red interna `reservas-net`. | *Imagen oficial* | *Imagen oficial* |
+| **`reservas-api`** | `node` / `appuser` (UID $\neq$ 0) | `0.0.0.0:3001->3000/tcp` | **Depuración local:** Expuesto temporalmente para consultas directas; en Semana 6 pasa a ser servicio interno. | **51 hallazgos** (Alpine 3.23.4: 0 critical, 4 high, 15 medium, 32 low) | **40 hallazgos** (Node.js pkg: 2 critical, 22 high, 13 medium, 3 low) |
+| **`reservas-frontend`** | `nginx` (UID 101 / GID 101) | `0.0.0.0:3000->8080/tcp` | **Público:** Punto único de entrada al sistema web desde el navegador. | **207 hallazgos** (Alpine 3.21.3: 2 critical, 55 high, 100 medium, 46 low) | *Clean / No aplica* (archivos estáticos compilados) |
+
+### Análisis de los resultados:
+* **Aislamiento de usuarios:** Se constató que las imágenes propias (`reservas-api` y `reservas-frontend`) corren bajo usuarios no privilegiados, limitando el impacto en el host ante una posible
+ vulneración del contenedor.
+* **Exposición mínima de red:** La base de datos no mapea puertos hacia el anfitrión, cumpliendo con el principio de menor privilegio de red.
+* **Evaluación de vulnerabilidades:**  
+  * En `reservas-frontend`, la base `alpine 3.21.3` muestra 207 hallazgos (con 2 críticos), lo que indica que actualizar la versión base de Alpine en el Dockerfile a una más reciente (como la que
+   ya usa la API) reducirá drásticamente la cantidad de alertas con parche disponible.
+  * En `reservas-api`, los 2 hallazgos críticos provienen de las dependencias de Node.js (`package.json`), identificando con precisión que la 
+  acción correctiva requiere actualizar librerías específicas de la aplicación y no la imagen base del sistema operativo.
