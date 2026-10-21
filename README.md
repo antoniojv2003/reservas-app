@@ -139,3 +139,24 @@ la siembra de datos y el inicio del servidor sin errores.
 ## Punto 7: ciclo de vida y diferencia entre down y down -v
 Ambos sirven para eliminar los contenedores levantados mediante el docker compose, con la diferencia que down borra contenedores y redes,
 mientras que down -v borra también los volúmenes, y con ellos, los datos.
+
+## Consigna 8: Contrato de variables (.env.example) y desacoplamiento de secretos
+
+Se creó el archivo `.env.example` en la raíz del repositorio como plantilla pública que documenta el contrato de variables de entorno consumidas por 
+las tres capas (`reservas-db`, `reservas-api` y `reservas-frontend`), asegurando que el archivo con los valores reales (`.env`) quede ignorado mediante `.gitignore`.
+
+### Análisis del problema en producción y transición a Kubernetes:
+
+1. **El problema de las credenciales en Docker Compose y `.env`:**
+   * **Inseguridad en el repositorio:** Dejar credenciales literales en el `docker-compose.yml` expone datos sensibles a cualquier persona con acceso al control de versiones de Git.
+   * **El límite del archivo `.env`:** Aunque `.env` evita subir contraseñas a Git, **no las protege en tiempo de ejecución ni en el servidor**. En Docker Compose, las variables 
+   se inyectan en texto plano en el entorno del proceso. Cualquier usuario o proceso con acceso al host o al daemon puede leer las contraseñas sin restricciones mediante comandos 
+   de inspección estándar (`docker inspect <contenedor>` o `docker compose config`), o desde dentro del contenedor consultando `/proc/1/environ` o ejecutando `env`.
+
+2. **Cómo se resuelve en producción con Kubernetes (anticipo de Semana 7):**
+   En entornos productivos de Kubernetes, este problema se resuelve desacoplando la configuración del código mediante dos objetos nativos según la sensibilidad de los datos:
+   * **ConfigMaps:** Se utilizan para variables no sensibles del sistema (como `DB_HOST`, `DB_PORT`, `PORT`, `API_HOST`, `API_PORT` y directivas como `SEED_DEMO` o `APP_VERSION`), permitiendo
+    modificarlas dinámicamente sin reconstruir imágenes.
+   * **Secrets:** Se utilizan para almacenar credenciales confidenciales (`MYSQL_ROOT_PASSWORD`, `MYSQL_PASSWORD`, `DB_PASSWORD`). A diferencia de Compose, los Secrets en Kubernetes se almacenan
+    de manera aislada (con opción de cifrado en reposo en `etcd`), su acceso se restringe mediante políticas de RBAC (Role-Based Access Control) y se montan en los Pods dentro de sistemas de archivos
+     temporales en memoria RAM volátil (`tmpfs`), de modo que nunca quedan expuestos como cadenas de texto plano en los manifiestos de despliegue ni se escriben en el disco de los nodos worker.

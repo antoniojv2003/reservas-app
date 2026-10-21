@@ -3,10 +3,10 @@ services:
     image: mysql:8.4
     container_name: reservas-db
     environment:
-      MYSQL_ROOT_PASSWORD: reservas_root_pass
-      MYSQL_DATABASE: reservasdb
-      MYSQL_USER: reservas_user
-      MYSQL_PASSWORD: reservas_pass
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Falta MYSQL_ROOT_PASSWORD en .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?Falta MYSQL_DATABASE en .env}
+      MYSQL_USER: ${MYSQL_USER:?Falta MYSQL_USER en .env}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Falta MYSQL_PASSWORD en .env}
     healthcheck:
         test:
             - CMD-SHELL
@@ -24,14 +24,14 @@ services:
     container_name: reservas-api
     ports: ["3001:3000"]
     environment:
-      PORT: 3000
-      DB_HOST: reservas-db
-      DB_PORT: 3306
-      DB_NAME: reservasdb
-      DB_USER: reservas_user
-      DB_PASSWORD: reservas_pass
-      APP_VERSION: v1
-      SEED_DEMO: true
+      PORT: ${PORT:-3000}
+      DB_HOST: ${DB_HOST:-reservas-db}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME:?Falta DB_NAME en .env}
+      DB_USER: ${DB_USER:?Falta DB_USER en .env}
+      DB_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD en .env}
+      APP_VERSION: ${APP_VERSION:-v1}
+      SEED_DEMO: ${SEED_DEMO:-true}
     depends_on:
       reservas-db:
         condition: service_healthy
@@ -51,8 +51,8 @@ services:
     container_name: reservas-frontend
     ports: ["3000:8080"]
     environment:
-        API_HOST: reservas-api
-        API_PORT: 3000
+      API_HOST: ${API_HOST:-reservas-api}
+      API_PORT: ${API_PORT:-3000}
     depends_on:
           reservas-api:
             condition: service_healthy
