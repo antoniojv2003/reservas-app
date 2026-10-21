@@ -182,3 +182,21 @@ Se llevó a cabo la inspección de seguridad sobre los servicios del stack confo
    ya usa la API) reducirá drásticamente la cantidad de alertas con parche disponible.
   * En `reservas-api`, los 2 hallazgos críticos provienen de las dependencias de Node.js (`package.json`), identificando con precisión que la 
   acción correctiva requiere actualizar librerías específicas de la aplicación y no la imagen base del sistema operativo.
+
+## Consigna 10: Principio de menor privilegio con Linux Capabilities
+
+Se aplicó la directiva `cap_drop: [ALL]` en los tres servicios para despojarlos de todas las capacidades por defecto del kernel.
+
+### Observaciones y diagnóstico:
+1. **Comportamiento en `reservas-api` y `reservas-frontend`:**  
+   Ambos contenedores continuaron funcionando con normalidad sin requerir ninguna capability. Esto se debe a que fueron diseñados para correr 
+   desde el inicio bajo usuarios no privilegiados (`appuser`/`node` y `nginx` UID 101); sus procesos se limitan a abrir sockets de red no 
+   privilegiados (>1024) y servir tráfico HTTP en el espacio de usuario común.
+
+2. **Falla en `reservas-db`:**  
+   El contenedor de la base de datos abortó su inicio con código de salida `1`, impidiendo el arranque de la API y el frontend por la
+    dependencia `service_healthy`. La inspección mediante `docker compose logs reservas-db` arrojó:
+   ```text
+   [ERROR] [MY-010126] [Server] setgid: Operation not permitted
+
+  
