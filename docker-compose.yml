@@ -32,6 +32,10 @@ services:
       DB_PASSWORD: reservas_pass
       APP_VERSION: v1
       SEED_DEMO: true
+    depends_on:
+      reservas-db:
+        condition: service_healthy
+    
     healthcheck:
       test:
           - CMD
@@ -49,6 +53,9 @@ services:
     environment:
         API_HOST: reservas-api
         API_PORT: 3000
+    depends_on:
+          reservas-api:
+            condition: service_healthy
     healthcheck:
         test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8080/healthz"]
         interval: 5s
