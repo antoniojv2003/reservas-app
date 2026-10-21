@@ -129,3 +129,13 @@ Kubernetes, donde no existe depends_on.
 reservas-frontend respecto de reservas-api: lo que no puede faltar es algún depends_on. Sin él, el frontend arranca antes que la API, nginx no resuelve el upstream
 y termina con host not found in upstream. A nginx le basta con que el nombre resuelva —la forma corta también funciona—; service_healthy hace además que
 arranque con la API ya en funcionamiento, sin respuestas 502 en los primeros segundos.
+
+## Punto 6: validación del despliegue y estado de salud
+Tras validar la sintaxis con `docker compose config` y levantar el stack con `docker compose up --build -d`, se constató mediante `docker compose ps` que los 
+tres servicios alcanzaron el estado `healthy` de forma ordenada. La inspección de logs de `reservas-api` confirmó que, gracias a la 
+sincronización con `depends_on` y healthchecks, la conexión inicial a  MySQL fue inmediata y sin reintentos por `ECONNREFUSED`, logrando 
+la siembra de datos y el inicio del servidor sin errores.
+
+## Punto 7: ciclo de vida y diferencia entre down y down -v
+Ambos sirven para eliminar los contenedores levantados mediante el docker compose, con la diferencia que down borra contenedores y redes,
+mientras que down -v borra también los volúmenes, y con ellos, los datos.
