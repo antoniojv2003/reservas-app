@@ -254,3 +254,9 @@ En este punto se generó el manifiesto del Pod de la base de datos de manera aut
 las cuatro variables de entorno MYSQL_*. Durante su despliegue se observó una demora considerable en el estado Pulling debido al peso de la imagen oficial de mysql:8.4 y a la velocidad de la red del clúster. Asimismo, 
 se destacó que el contenedor pasa rápidamente a un estado aparente de Running, aunque la inicialización interna del directorio de datos demanda decenas de segundos adicionales antes de estar operativo, evidenciando la
 ausencia de mecanismos automáticos de salud como los que proveía depends_on en Docker Compose.
+
+#Punto 4 del tp5: creación de manifiesto yaml para el pod reservas-api y reservas-frontend. Error CrashLoopBackOff.
+En este punto se redactaron y aplicaron los manifiestos de los pods restantes (pod-reservas-api.yaml y pod-reservas-frontend.yaml) respetando el orden estricto de despliegue (db $\rightarrow$ api $\rightarrow$ frontend).
+ Durante el monitoreo del estado con kubectl get pods -w se observó que tanto el backend como el frontend experimentaron reinicios y estados transitorios de Error y CrashLoopBackOff (con múltiples reintentos), evidenciando 
+ que los pods intentan levantar pero fallan temporalmente debido a la falta de sincronización nativa en el orden de arranque de los servicios, ya que a diferencia de Docker Compose, los Pods sueltos en Kubernetes no gestionan
+ dependencias de salud automáticas entre ellos.
