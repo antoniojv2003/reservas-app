@@ -130,17 +130,17 @@ reservas-frontend respecto de reservas-api: lo que no puede faltar es algún dep
 y termina con host not found in upstream. A nginx le basta con que el nombre resuelva —la forma corta también funciona—; service_healthy hace además que
 arranque con la API ya en funcionamiento, sin respuestas 502 en los primeros segundos.
 
-## Punto 6: validación del despliegue y estado de salud
+## Punto 6 del tp4: validación del despliegue y estado de salud
 Tras validar la sintaxis con `docker compose config` y levantar el stack con `docker compose up --build -d`, se constató mediante `docker compose ps` que los 
 tres servicios alcanzaron el estado `healthy` de forma ordenada. La inspección de logs de `reservas-api` confirmó que, gracias a la 
 sincronización con `depends_on` y healthchecks, la conexión inicial a  MySQL fue inmediata y sin reintentos por `ECONNREFUSED`, logrando 
 la siembra de datos y el inicio del servidor sin errores.
 
-## Punto 7: ciclo de vida y diferencia entre down y down -v
+## Punto 7 del tp4: ciclo de vida y diferencia entre down y down -v
 Ambos sirven para eliminar los contenedores levantados mediante el docker compose, con la diferencia que down borra contenedores y redes,
 mientras que down -v borra también los volúmenes, y con ellos, los datos.
 
-## Consigna 8: Contrato de variables (.env.example) y desacoplamiento de secretos
+## Punto 8 del tp4: Contrato de variables (.env.example) y desacoplamiento de secretos
 
 Se creó el archivo `.env.example` en la raíz del repositorio como plantilla pública que documenta el contrato de variables de entorno consumidas por 
 las tres capas (`reservas-db`, `reservas-api` y `reservas-frontend`), asegurando que el archivo con los valores reales (`.env`) quede ignorado mediante `.gitignore`.
@@ -161,7 +161,7 @@ las tres capas (`reservas-db`, `reservas-api` y `reservas-frontend`), asegurando
     de manera aislada (con opción de cifrado en reposo en `etcd`), su acceso se restringe mediante políticas de RBAC (Role-Based Access Control) y se montan en los Pods dentro de sistemas de archivos
      temporales en memoria RAM volátil (`tmpfs`), de modo que nunca quedan expuestos como cadenas de texto plano en los manifiestos de despliegue ni se escriben en el disco de los nodos worker.
 
-## Consigna 9: Revisión de seguridad y auditoría de vulnerabilidades
+## Punto 9 del tp4: Revisión de seguridad y auditoría de vulnerabilidades
 
 Se llevó a cabo la inspección de seguridad sobre los servicios del stack conforme a los requerimientos de la consigna:
 
@@ -183,7 +183,7 @@ Se llevó a cabo la inspección de seguridad sobre los servicios del stack confo
   * En `reservas-api`, los 2 hallazgos críticos provienen de las dependencias de Node.js (`package.json`), identificando con precisión que la 
   acción correctiva requiere actualizar librerías específicas de la aplicación y no la imagen base del sistema operativo.
 
-## Consigna 10: Principio de menor privilegio con Linux Capabilities
+## Punto 10 del tp4: Principio de menor privilegio con Linux Capabilities
 
 Se aplicó la directiva `cap_drop: [ALL]` en los tres servicios para despojarlos de todas las capacidades por defecto del kernel.
 
@@ -200,7 +200,7 @@ Se aplicó la directiva `cap_drop: [ALL]` en los tres servicios para despojarlos
    [ERROR] [MY-010126] [Server] setgid: Operation not permitted
 
   
-## Consigna 11: Comparación entre despliegue manual (Semana 3) y Docker Compose (Semana 4)
+## Punto 11 del tp4: Comparación entre despliegue manual (Semana 3) y Docker Compose (Semana 4)
 
 A continuación se detalla la transición arquitectónica entre los comandos imperativos de la Semana 3 (`docker run`) y la orquestación declarativa de la Semana 4 (`docker-compose.yml`):
 
@@ -235,3 +235,15 @@ A continuación se detalla la transición arquitectónica entre los comandos imp
 | **Gestión de variables** | Flags `-e VAR=valor` dispersos | Centralizadas e interpoladas desde `.env` | Credenciales fuera del código y del historial de commits |
 | **Capabilities del kernel** | Privilegios por defecto de Docker | Restricción total con `cap_drop: [ALL]` | Reducción drástica de superficie de ataque |
 | **Comando de parada** | Múltiples `docker stop` y `docker rm` | `docker compose down` (conserva datos) | Ciclo de vida controlado y consistente |
+
+
+## Punto 1 del tp5: acceso a las imágenes propias por parte del clúster y creación de pods
+
+Para que el clúster acceda a mis imágenes, primero fueron publicadas en Dokcer Hub indicando mi nombre de usuario del registry. Primero se hizo una prueba creando el pod sin especificar el nombre de usuario, lo que hizo que
+en la salida del comando kubectl describe pod se muestre el estado de ImagePullBackOff. Esto es porque no encontró la imagen. Luego, se hizo el mismo proceso indicando el nombre de usuario para que k8s descargue la imagen
+del registry correspondiente, quedando el pod al final del proceso en estado de Running.
+
+# Punto 2 del tp5: creación de namespace "reservas-app"
+
+Se definió un namespace por defecto para el contexto llamado "reservas-app". La idea es trabajar bajo el namespace del proyecto y sin necesitar del flag -n al correr comandos. SIEMPRE primero verificando estar en el cluster
+correspondiente mediante kubectl config current-context.
