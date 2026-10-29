@@ -247,3 +247,10 @@ del registry correspondiente, quedando el pod al final del proceso en estado de 
 
 Se definió un namespace por defecto para el contexto llamado "reservas-app". La idea es trabajar bajo el namespace del proyecto y sin necesitar del flag -n al correr comandos. SIEMPRE primero verificando estar en el cluster
 correspondiente mediante kubectl config current-context.
+
+
+#Punto 3 del tp5: creación de manifiesto yaml para el pod reservas-db
+En este punto se generó el manifiesto del Pod de la base de datos de manera automatizada mediante el comando --dry-run=client -o yaml, editándolo posteriormente para incorporar de forma explícita el puerto 3306 y 
+las cuatro variables de entorno MYSQL_*. Durante su despliegue se observó una demora considerable en el estado Pulling debido al peso de la imagen oficial de mysql:8.4 y a la velocidad de la red del clúster. Asimismo, 
+se destacó que el contenedor pasa rápidamente a un estado aparente de Running, aunque la inicialización interna del directorio de datos demanda decenas de segundos adicionales antes de estar operativo, evidenciando la
+ausencia de mecanismos automáticos de salud como los que proveía depends_on en Docker Compose.
