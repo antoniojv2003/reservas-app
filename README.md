@@ -279,3 +279,8 @@ pues cambian. Esta es la razón de existencia de los Services.
 Finalmente, al aplicar el manifiesto pod-reservas-frontend.yaml, la aplicación arrojó nuevamente el error de resolución host not found in upstream. Aunque este síntoma se repitió de forma idéntica por tercera vez en el 
 curso, la causa raíz es diferente: mientras que en las ocasiones anteriores el fallo obedecía a la ausencia de una red compartida, en este escenario el problema radica en la falta de un objeto tipo Service en Kubernetes 
 que resuelva los nombres de host internos entre los pods de manera persistente.
+
+
+# Punto 8 del tp5: uso de port-forward como herramienta de depuración
+port-forward es una herramienta de depuración (debugging) y no un mecanismo de publicación. Esto significa que es excelente para realizar pruebas rápidas, solucionar problemas o inspeccionar un Pod sobre la marcha, pero
+nunca debe usarse en producción como un reemplazo de los servicios de red (Service), ya que el túnel depende de una sesión de terminal activa y se corta apenas se cierra el proceso.
