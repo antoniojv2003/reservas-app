@@ -273,3 +273,9 @@ requiere obligatoriamente de un objeto de red tipo Service, el cual todavía no 
 ## Punto 6 del tp5: pods alcanzables mediante direcciones IP
 Como no hay una resolución de nombres interna, los pods no se pueden conectar mediante nombres. Al usar las direcciones IP en su lugar, se vuelven ancanzables entre sí pero esto tiene un problema: las IP no son estables,
 pues cambian. Esta es la razón de existencia de los Services.
+
+
+## Punto 7 del tp5: error "host not found in upstream"
+Finalmente, al aplicar el manifiesto pod-reservas-frontend.yaml, la aplicación arrojó nuevamente el error de resolución host not found in upstream. Aunque este síntoma se repitió de forma idéntica por tercera vez en el 
+curso, la causa raíz es diferente: mientras que en las ocasiones anteriores el fallo obedecía a la ausencia de una red compartida, en este escenario el problema radica en la falta de un objeto tipo Service en Kubernetes 
+que resuelva los nombres de host internos entre los pods de manera persistente.
