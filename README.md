@@ -281,6 +281,6 @@ curso, la causa raíz es diferente: mientras que en las ocasiones anteriores el 
 que resuelva los nombres de host internos entre los pods de manera persistente.
 
 
-# Punto 8 del tp5: uso de port-forward como herramienta de depuración
+## Punto 8 del tp5: uso de port-forward como herramienta de depuración
 port-forward es una herramienta de depuración (debugging) y no un mecanismo de publicación. Esto significa que es excelente para realizar pruebas rápidas, solucionar problemas o inspeccionar un Pod sobre la marcha, pero
 nunca debe usarse en producción como un reemplazo de los servicios de red (Service), ya que el túnel depende de una sesión de terminal activa y se corta apenas se cierra el proceso.
