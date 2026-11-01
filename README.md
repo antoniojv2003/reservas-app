@@ -286,5 +286,28 @@ port-forward es una herramienta de depuración (debugging) y no un mecanismo de 
 nunca debe usarse en producción como un reemplazo de los servicios de red (Service), ya que el túnel depende de una sesión de terminal activa y se corta apenas se cierra el proceso.
 
 
-## Punto 9 del tp5: receación de pods
+## Punto 9 del tp5: recreación de pods
 Al eliminar un pod no hay quien lo vigile: nadie lo recrea.
+
+
+## Punto 10 del tp5: cheatsheet con los comandos utilizados
+kubectl config current-contextMuestra el contexto de Kubernetes actual en el que estás operando, permitiendo verificar rápidamente qué clúster y usuario están activos.
+
+kubectl apply -f [archivo.yaml]Crea o actualiza un recurso en el clúster (namespaces, pods, etc.) basándose en la especificación declarativa de un archivo YAML.
+
+kubectl get podsLista de forma resumida todos los Pods activos en el namespace actual, mostrando su estado, reinicios y tiempo de vida.
+
+kubectl get pods -o wideMuestra una lista detallada de los Pods incluyendo información extendida, fundamentalmente las direcciones IP internas asignadas a cada uno.
+
+kubectl get pods -wInicia un monitoreo interactivo en tiempo real de los Pods, imprimiendo automáticamente cada cambio de estado o reinicio que ocurra.
+
+kubectl describe pod [nombre-del-pod]Muestra un reporte detallado y el historial completo de eventos de un Pod específico, muy útil para detectar fallos de configuración o de red.
+
+kubectl logs [nombre-del-pod]Extrae y muestra por pantalla la salida estándar de los contenedores dentro de un Pod, indispensable para ver los registros de ejecución de la aplicación.
+
+kubectl logs [nombre-del-pod] --previousRecupera los logs de la instancia anterior de un contenedor que acaba de fallar o reiniciarse, permitiendo analizar la causa raíz del último choque.
+
+kubectl delete pod [nombre-del-pod]Elimina un Pod de forma inmediata para forzar su recreación (por ejemplo, tras modificar variables de entorno o para observar el cambio dinámico de su IP).
+
+kubectl port-forward pod/[nombre-del-pod] [puerto-local]:[puerto-contenedor]Abre un túnel directo de red entre la máquina anfitriona y un Pod específico, utilizándose como herramienta temporal de depuración
+para acceder al servicio sin un objeto Service configurado.
