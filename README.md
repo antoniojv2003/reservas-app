@@ -243,33 +243,33 @@ Para que el clúster acceda a mis imágenes, primero fueron publicadas en Dokcer
 en la salida del comando kubectl describe pod se muestre el estado de ImagePullBackOff. Esto es porque no encontró la imagen. Luego, se hizo el mismo proceso indicando el nombre de usuario para que k8s descargue la imagen
 del registry correspondiente, quedando el pod al final del proceso en estado de Running.
 
-# Punto 2 del tp5: creación de namespace "reservas-app"
+## Punto 2 del tp5: creación de namespace "reservas-app"
 
 Se definió un namespace por defecto para el contexto llamado "reservas-app". La idea es trabajar bajo el namespace del proyecto y sin necesitar del flag -n al correr comandos. SIEMPRE primero verificando estar en el cluster
 correspondiente mediante kubectl config current-context.
 
 
-#Punto 3 del tp5: creación de manifiesto yaml para el pod reservas-db
+## Punto 3 del tp5: creación de manifiesto yaml para el pod reservas-db
 En este punto se generó el manifiesto del Pod de la base de datos de manera automatizada mediante el comando --dry-run=client -o yaml, editándolo posteriormente para incorporar de forma explícita el puerto 3306 y 
 las cuatro variables de entorno MYSQL_*. Durante su despliegue se observó una demora considerable en el estado Pulling debido al peso de la imagen oficial de mysql:8.4 y a la velocidad de la red del clúster. Asimismo, 
 se destacó que el contenedor pasa rápidamente a un estado aparente de Running, aunque la inicialización interna del directorio de datos demanda decenas de segundos adicionales antes de estar operativo, evidenciando la
 ausencia de mecanismos automáticos de salud como los que proveía depends_on en Docker Compose.
 
 
-#Punto 4 del tp5: creación de manifiesto yaml para el pod reservas-api y reservas-frontend. Error CrashLoopBackOff.
+## Punto 4 del tp5: creación de manifiesto yaml para el pod reservas-api y reservas-frontend. Error CrashLoopBackOff.
 En este punto se redactaron y aplicaron los manifiestos de los pods restantes (pod-reservas-api.yaml y pod-reservas-frontend.yaml) respetando el orden estricto de despliegue (db $\rightarrow$ api $\rightarrow$ frontend).
 Durante el monitoreo del estado con kubectl get pods -w se observó que tanto el backend como el frontend experimentaron reinicios y estados transitorios de Error y CrashLoopBackOff (con múltiples reintentos), evidenciando 
 que los pods intentan levantar pero fallan temporalmente debido a la falta de sincronización nativa en el orden de arranque de los servicios, ya que a diferencia de Docker Compose, los Pods sueltos en Kubernetes no gestionan
 dependencias de salud automáticas entre ellos.
 
 
-#Punto 5 del tp5: error CrashLoopBackOff - explicación
+## Punto 5 del tp5: error CrashLoopBackOff - explicación
 Causa raíz: Error de resolución de nombres (ENOTFOUND o fallo de conexión al intentar resolver reservas-db).
 
 Explicación: La API entra en bucle de error porque configuró DB_HOST=reservas-db, pero en Kubernetes un Pod por sí solo no expone un nombre DNS en la red del clúster; dicha resolución estática y descubrimiento de servicio
 requiere obligatoriamente de un objeto de red tipo Service, el cual todavía no ha sido creado.
 
 
-#Punto 6 del tp5: pods alcanzables mediante direcciones IP
+## Punto 6 del tp5: pods alcanzables mediante direcciones IP
 Como no hay una resolución de nombres interna, los pods no se pueden conectar mediante nombres. Al usar las direcciones IP en su lugar, se vuelven ancanzables entre sí pero esto tiene un problema: las IP no son estables,
 pues cambian. Esta es la razón de existencia de los Services.
