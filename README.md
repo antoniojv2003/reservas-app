@@ -257,6 +257,12 @@ ausencia de mecanismos automáticos de salud como los que proveía depends_on en
 
 #Punto 4 del tp5: creación de manifiesto yaml para el pod reservas-api y reservas-frontend. Error CrashLoopBackOff.
 En este punto se redactaron y aplicaron los manifiestos de los pods restantes (pod-reservas-api.yaml y pod-reservas-frontend.yaml) respetando el orden estricto de despliegue (db $\rightarrow$ api $\rightarrow$ frontend).
- Durante el monitoreo del estado con kubectl get pods -w se observó que tanto el backend como el frontend experimentaron reinicios y estados transitorios de Error y CrashLoopBackOff (con múltiples reintentos), evidenciando 
- que los pods intentan levantar pero fallan temporalmente debido a la falta de sincronización nativa en el orden de arranque de los servicios, ya que a diferencia de Docker Compose, los Pods sueltos en Kubernetes no gestionan
- dependencias de salud automáticas entre ellos.
+Durante el monitoreo del estado con kubectl get pods -w se observó que tanto el backend como el frontend experimentaron reinicios y estados transitorios de Error y CrashLoopBackOff (con múltiples reintentos), evidenciando 
+que los pods intentan levantar pero fallan temporalmente debido a la falta de sincronización nativa en el orden de arranque de los servicios, ya que a diferencia de Docker Compose, los Pods sueltos en Kubernetes no gestionan
+dependencias de salud automáticas entre ellos.
+
+#Punto 5 del tp5: error CrashLoopBackOff - explicación
+Causa raíz: Error de resolución de nombres (ENOTFOUND o fallo de conexión al intentar resolver reservas-db).
+
+Explicación: La API entra en bucle de error porque configuró DB_HOST=reservas-db, pero en Kubernetes un Pod por sí solo no expone un nombre DNS en la red del clúster; dicha resolución estática y descubrimiento de servicio
+requiere obligatoriamente de un objeto de red tipo Service, el cual todavía no ha sido creado.
