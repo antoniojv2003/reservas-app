@@ -311,3 +311,11 @@ kubectl delete pod [nombre-del-pod]Elimina un Pod de forma inmediata para forzar
 
 kubectl port-forward pod/[nombre-del-pod] [puerto-local]:[puerto-contenedor]Abre un túnel directo de red entre la máquina anfitriona y un Pod específico, utilizándose como herramienta temporal de depuración
 para acceder al servicio sin un objeto Service configurado.
+
+
+# Punto 11 del tp5: comparación con docker compose
+Al migrar la arquitectura de docker-compose.yml hacia los manifiestos de Pods individuales en Kubernetes, se conservaron las imágenes base utilizadas, las variables de entorno de configuración interna de cada servicio
+y la estructura general de los contenedores. Por otro lado, desaparecieron los bloques nativos de orquestación y red de Docker Compose —como la red dedicada reservas-net, los volúmenes con nombre, las directivas de control
+de salud (healthcheck) y las condiciones de espera basadas en depends_on— debido a que los Pods sueltos en Kubernetes no gestionan dependencias automáticas de arranque entre sí. Finalmente, todavía falta incorporar los
+objetos de red tipo Service para resolver de forma persistente y mediante nombres DNS la comunicación entre los componentes, así como la abstracción de despliegue mediante controladores (Deployment) que reemplacen la 
+administración manual de los Pods.
