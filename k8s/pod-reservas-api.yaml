@@ -14,7 +14,7 @@ spec:
     - name: PORT
       value: "3000"
     - name: DB_HOST
-      value: "reservas-db"
+      value: "10.244.0.18"
     - name: DB_PORT
       value: "3306"
     - name: DB_NAME
