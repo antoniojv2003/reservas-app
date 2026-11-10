@@ -313,9 +313,15 @@ kubectl port-forward pod/[nombre-del-pod] [puerto-local]:[puerto-contenedor]Abre
 para acceder al servicio sin un objeto Service configurado.
 
 
-# Punto 11 del tp5: comparación con docker compose
+## Punto 11 del tp5: comparación con docker compose
 Al migrar la arquitectura de docker-compose.yml hacia los manifiestos de Pods individuales en Kubernetes, se conservaron las imágenes base utilizadas, las variables de entorno de configuración interna de cada servicio
 y la estructura general de los contenedores. Por otro lado, desaparecieron los bloques nativos de orquestación y red de Docker Compose —como la red dedicada reservas-net, los volúmenes con nombre, las directivas de control
 de salud (healthcheck) y las condiciones de espera basadas en depends_on— debido a que los Pods sueltos en Kubernetes no gestionan dependencias automáticas de arranque entre sí. Finalmente, todavía falta incorporar los
 objetos de red tipo Service para resolver de forma persistente y mediante nombres DNS la comunicación entre los componentes, así como la abstracción de despliegue mediante controladores (Deployment) que reemplacen la 
 administración manual de los Pods.
+
+
+## Punto 1 del tp6: manifiestos de deployments y services
+migración de la aplicación reservas-app desde Docker Compose hacia Kubernetes dentro del namespace reservas-app, creando 3 Deployments y 3 Services limpios (sin bloques status ni campos vacíos) organizados en capas: 
+reservas-db como ClusterIP con 1 réplica y puerto 3306; reservas-api como ClusterIP con 2 réplicas, puerto 3000 y variables de entorno orientadas a la base de datos; y reservas-frontend como NodePort con 2 réplicas, mapeado
+al nodo en el puerto 30301 hacia el contenedor en el 8080.
