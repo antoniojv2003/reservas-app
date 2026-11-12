@@ -10,7 +10,6 @@ spec:
   selector:
     matchLabels:
       app: reservas-db
-  strategy: {}
   template:
     metadata:
       labels:
@@ -30,4 +29,3 @@ spec:
               value: "reservas_pass"
           ports:
             - containerPort: 3306
-        resources: {}

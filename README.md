@@ -322,6 +322,15 @@ administración manual de los Pods.
 
 
 ## Punto 1 del tp6: manifiestos de deployments y services
-migración de la aplicación reservas-app desde Docker Compose hacia Kubernetes dentro del namespace reservas-app, creando 3 Deployments y 3 Services limpios (sin bloques status ni campos vacíos) organizados en capas: 
+Migración de la aplicación reservas-app desde Docker Compose hacia Kubernetes dentro del namespace reservas-app, creando 3 Deployments y 3 Services limpios (sin bloques status ni campos vacíos) organizados en capas: 
 reservas-db como ClusterIP con 1 réplica y puerto 3306; reservas-api como ClusterIP con 2 réplicas, puerto 3000 y variables de entorno orientadas a la base de datos; y reservas-frontend como NodePort con 2 réplicas, mapeado
 al nodo en el puerto 30301 hacia el contenedor en el 8080.
+
+
+## Punto 2 del tp6: lanzamiento de deployments y services - prueba de error de resolución de upstream
+Para desplegar la arquitectura respetando las dependencias de red, primero se provocó intencionalmente un fallo de resolución DNS aplicando el 
+Deployment del frontend sin haber creado previamente el Service reservas-api, lo que generó un error en Nginx al no encontrar el upstream (host 
+not found in upstream "reservas-api"). Tras registrar el incidente y limpiar el despliegue fallido, se aplicaron los manifiestos en el orden 
+correcto —primero todos los Service para habilitar la resolución de nombres interna en el clúster, y luego los Deployment— y se corrigieron 
+errores de indentación y bloques vacíos en deploy-reservas-db.yaml hasta lograr el levantamiento exitoso de todas las capas dentro del namespace 
+reservas-app.
