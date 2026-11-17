@@ -338,6 +338,10 @@ reservas-app.
 
 ## Punto 3 del tp6: verificación de edpoints
 Para verificar que los selectores vinculan correctamente cada servicio con sus Pods correspondientes, se ejecutó el comando
- kubectl get endpoints, obteniendo la lista de las direcciones IP y puertos activos de los contenedores asociados a cada objeto: reservas-db
- enlazado al Pod con IP 10.244.0.34:3306, reservas-api vinculado a dos réplicas (10.244.0.35:3000 y 10.244.0.36:3000), y reservas-frontend conectado a sus dos pods de interfaz (10.244.0.39:8080 y 10.244.0.40:8080). 
- Esto confirma que los selectores definidos en los manifiestos coinciden de forma exacta con las etiquetas de los Pods desplegados, evitando que la columna ENDPOINTS aparezca vacía o con valores nulos (<none>).
+kubectl get endpoints, obteniendo la lista de las direcciones IP y puertos activos de los contenedores asociados a cada objeto: reservas-db
+enlazado al Pod con IP 10.244.0.34:3306, reservas-api vinculado a dos réplicas (10.244.0.35:3000 y 10.244.0.36:3000), y reservas-frontend conectado a sus dos pods de interfaz (10.244.0.39:8080 y 10.244.0.40:8080). 
+Esto confirma que los selectores definidos en los manifiestos coinciden de forma exacta con las etiquetas de los Pods desplegados, evitando que la columna ENDPOINTS aparezca vacía o con valores nulos (<none>).
+
+
+## Punto 4 del tp6: creación de una reserva
+Se creó una reserva entrando a la URL correspondiente (para este caso: http://172.16.21.21:30301/).
