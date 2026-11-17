@@ -351,3 +351,9 @@ Se creó una reserva entrando a la URL correspondiente (para este caso: http://1
 Para cumplir con el requerimiento del punto 5, se creó un servicio auxiliar de tipo NodePort (reservas-api-nodeport) destinado exclusivamente a tareas de depuración externa mediante el puerto estático 30501, el cual 
 no se incluirá dentro del chart definitivo de la semana 8. Al verificar su funcionamiento ejecutando una petición HTTP al nodo mediante curl -s [http://172.16.21.21:30501/health](http://172.16.21.21:30501/health), 
 se obtuvo una respuesta exitosa y operativa que confirma tanto la salud de la API como su conectividad interna con la base de datos ({"status":"ok","db":"ok","version":"v1"}).
+
+
+## Punto 6 del tp6: recreación de un pod eliminado
+Para comprobar la autorreparación del sistema, se eliminó de forma manual una réplica específica de la API mediante su nombre, ejecutando en paralelo kubectl get pods -w para observar la respuesta del clúster. 
+Se comprobó que Kubernetes recreó el pod de inmediato para mantener el estado deseado de réplicas, mientras que la aplicación web y el servicio de depuración continuaron respondiendo sin interrupciones gracias 
+al balanceo interno y a la réplica restante, contrastando con la falta de alta disponibilidad nativa observada en los contenedores aislados de Docker Compose en la semana 5.
