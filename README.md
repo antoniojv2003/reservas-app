@@ -334,3 +334,10 @@ not found in upstream "reservas-api"). Tras registrar el incidente y limpiar el 
 correcto —primero todos los Service para habilitar la resolución de nombres interna en el clúster, y luego los Deployment— y se corrigieron 
 errores de indentación y bloques vacíos en deploy-reservas-db.yaml hasta lograr el levantamiento exitoso de todas las capas dentro del namespace 
 reservas-app.
+
+
+## Punto 3 del tp6: verificación de edpoints
+Para verificar que los selectores vinculan correctamente cada servicio con sus Pods correspondientes, se ejecutó el comando
+ kubectl get endpoints, obteniendo la lista de las direcciones IP y puertos activos de los contenedores asociados a cada objeto: reservas-db
+ enlazado al Pod con IP 10.244.0.34:3306, reservas-api vinculado a dos réplicas (10.244.0.35:3000 y 10.244.0.36:3000), y reservas-frontend conectado a sus dos pods de interfaz (10.244.0.39:8080 y 10.244.0.40:8080). 
+ Esto confirma que los selectores definidos en los manifiestos coinciden de forma exacta con las etiquetas de los Pods desplegados, evitando que la columna ENDPOINTS aparezca vacía o con valores nulos (<none>).
