@@ -345,3 +345,9 @@ Esto confirma que los selectores definidos en los manifiestos coinciden de forma
 
 ## Punto 4 del tp6: creación de una reserva
 Se creó una reserva entrando a la URL correspondiente (para este caso: http://172.16.21.21:30301/).
+
+
+## Punto 5 del tp6: creación de NodePort de depuración para reservas-api
+Para cumplir con el requerimiento del punto 5, se creó un servicio auxiliar de tipo NodePort (reservas-api-nodeport) destinado exclusivamente a tareas de depuración externa mediante el puerto estático 30501, el cual 
+no se incluirá dentro del chart definitivo de la semana 8. Al verificar su funcionamiento ejecutando una petición HTTP al nodo mediante curl -s [http://172.16.21.21:30501/health](http://172.16.21.21:30501/health), 
+se obtuvo una respuesta exitosa y operativa que confirma tanto la salud de la API como su conectividad interna con la base de datos ({"status":"ok","db":"ok","version":"v1"}).
