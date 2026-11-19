@@ -371,5 +371,5 @@ Aunque varias réplicas lean de forma concurrente que el turno está libre antes
 (201) y las demás colisionan y son rechazadas (409), garantizando que quede exactamente un registro.
 
 
-## Punto 9: recreación de reservas-db
+## Punto 9 del tp6: recreación de reservas-db
 `reservas-db` está desplegado como un `Deployment` sin un volumen persistente asociado. Al eliminar su Pod (`kubectl delete pod -l app=reservas-db -n reservas-app`) y esperar a que se recree, MySQL inicializa un directorio de datos nuevo desde cero: se pierden todas las reservas cargadas e incluso las tablas creadas dinámicamente tras el arranque anterior (`ERROR 1146: Table 'reservasdb.reservas' doesn't exist` hasta que la aplicación vuelva a crearlas). Esta limitación queda declarada explícitamente y se resolverá en la **Semana 7** mediante un volumen persistente (`PersistentVolume` / `PersistentVolumeClaim`).
