@@ -363,3 +363,9 @@ al balanceo interno y a la réplica restante, contrastando con la falta de alta 
 Para resolver el punto 7, se construyó y publicó en el registro la imagen antoniojv03/reservas-api:v2 pasando --build-arg APP_VERSION=v2, y se comentó la variable APP_VERSION forzada en el manifiesto del Deployment
 para que el contenedor tomara la versión definida en la imagen. Tras aplicar la actualización progresiva y revisar el historial y el estado del despliegue, se comprobó que el indicador de versión del frontend cambió 
 de v1 a v2 y luego volvió a v1 al ejecutar el rollback.
+
+
+## Punto 8 del tp6: concurrencia con múltiples réplicas y restricción UNIQUE
+lo que impide una doble reserva con tres réplicas de la API atendiendo peticiones en paralelo es la restricción UNIQUE (sala_id, fecha, franja) en la base de datos, y no una consulta previa en el código de la aplicación. 
+Aunque varias réplicas lean de forma concurrente que el turno está libre antes de insertar, el motor de base de datos hace valer la restricción UNIQUE de forma atómica al escribir: solo la primera inserción logra persistirse
+(201) y las demás colisionan y son rechazadas (409), garantizando que quede exactamente un registro.
