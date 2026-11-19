@@ -313,9 +313,63 @@ kubectl port-forward pod/[nombre-del-pod] [puerto-local]:[puerto-contenedor]Abre
 para acceder al servicio sin un objeto Service configurado.
 
 
-# Punto 11 del tp5: comparación con docker compose
+## Punto 11 del tp5: comparación con docker compose
 Al migrar la arquitectura de docker-compose.yml hacia los manifiestos de Pods individuales en Kubernetes, se conservaron las imágenes base utilizadas, las variables de entorno de configuración interna de cada servicio
 y la estructura general de los contenedores. Por otro lado, desaparecieron los bloques nativos de orquestación y red de Docker Compose —como la red dedicada reservas-net, los volúmenes con nombre, las directivas de control
 de salud (healthcheck) y las condiciones de espera basadas en depends_on— debido a que los Pods sueltos en Kubernetes no gestionan dependencias automáticas de arranque entre sí. Finalmente, todavía falta incorporar los
 objetos de red tipo Service para resolver de forma persistente y mediante nombres DNS la comunicación entre los componentes, así como la abstracción de despliegue mediante controladores (Deployment) que reemplacen la 
 administración manual de los Pods.
+
+
+## Punto 1 del tp6: manifiestos de deployments y services
+Migración de la aplicación reservas-app desde Docker Compose hacia Kubernetes dentro del namespace reservas-app, creando 3 Deployments y 3 Services limpios (sin bloques status ni campos vacíos) organizados en capas: 
+reservas-db como ClusterIP con 1 réplica y puerto 3306; reservas-api como ClusterIP con 2 réplicas, puerto 3000 y variables de entorno orientadas a la base de datos; y reservas-frontend como NodePort con 2 réplicas, mapeado
+al nodo en el puerto 30301 hacia el contenedor en el 8080.
+
+
+## Punto 2 del tp6: lanzamiento de deployments y services - prueba de error de resolución de upstream
+Para desplegar la arquitectura respetando las dependencias de red, primero se provocó intencionalmente un fallo de resolución DNS aplicando el 
+Deployment del frontend sin haber creado previamente el Service reservas-api, lo que generó un error en Nginx al no encontrar el upstream (host 
+not found in upstream "reservas-api"). Tras registrar el incidente y limpiar el despliegue fallido, se aplicaron los manifiestos en el orden 
+correcto —primero todos los Service para habilitar la resolución de nombres interna en el clúster, y luego los Deployment— y se corrigieron 
+errores de indentación y bloques vacíos en deploy-reservas-db.yaml hasta lograr el levantamiento exitoso de todas las capas dentro del namespace 
+reservas-app.
+
+
+## Punto 3 del tp6: verificación de edpoints
+Para verificar que los selectores vinculan correctamente cada servicio con sus Pods correspondientes, se ejecutó el comando
+kubectl get endpoints, obteniendo la lista de las direcciones IP y puertos activos de los contenedores asociados a cada objeto: reservas-db
+enlazado al Pod con IP 10.244.0.34:3306, reservas-api vinculado a dos réplicas (10.244.0.35:3000 y 10.244.0.36:3000), y reservas-frontend conectado a sus dos pods de interfaz (10.244.0.39:8080 y 10.244.0.40:8080). 
+Esto confirma que los selectores definidos en los manifiestos coinciden de forma exacta con las etiquetas de los Pods desplegados, evitando que la columna ENDPOINTS aparezca vacía o con valores nulos (<none>).
+
+
+## Punto 4 del tp6: creación de una reserva
+Se creó una reserva entrando a la URL correspondiente (para este caso: http://172.16.21.21:30301/).
+
+
+## Punto 5 del tp6: creación de NodePort de depuración para reservas-api
+Para cumplir con el requerimiento del punto 5, se creó un servicio auxiliar de tipo NodePort (reservas-api-nodeport) destinado exclusivamente a tareas de depuración externa mediante el puerto estático 30501, el cual 
+no se incluirá dentro del chart definitivo de la semana 8. Al verificar su funcionamiento ejecutando una petición HTTP al nodo mediante curl -s [http://172.16.21.21:30501/health](http://172.16.21.21:30501/health), 
+se obtuvo una respuesta exitosa y operativa que confirma tanto la salud de la API como su conectividad interna con la base de datos ({"status":"ok","db":"ok","version":"v1"}).
+
+
+## Punto 6 del tp6: recreación de un pod eliminado
+Para comprobar la autorreparación del sistema, se eliminó de forma manual una réplica específica de la API mediante su nombre, ejecutando en paralelo kubectl get pods -w para observar la respuesta del clúster. 
+Se comprobó que Kubernetes recreó el pod de inmediato para mantener el estado deseado de réplicas, mientras que la aplicación web y el servicio de depuración continuaron respondiendo sin interrupciones gracias 
+al balanceo interno y a la réplica restante, contrastando con la falta de alta disponibilidad nativa observada en los contenedores aislados de Docker Compose en la semana 5.
+
+
+## Punto 7 del tp6: rolling update
+Para resolver el punto 7, se construyó y publicó en el registro la imagen antoniojv03/reservas-api:v2 pasando --build-arg APP_VERSION=v2, y se comentó la variable APP_VERSION forzada en el manifiesto del Deployment
+para que el contenedor tomara la versión definida en la imagen. Tras aplicar la actualización progresiva y revisar el historial y el estado del despliegue, se comprobó que el indicador de versión del frontend cambió 
+de v1 a v2 y luego volvió a v1 al ejecutar el rollback.
+
+
+## Punto 8 del tp6: concurrencia con múltiples réplicas y restricción UNIQUE
+lo que impide una doble reserva con tres réplicas de la API atendiendo peticiones en paralelo es la restricción UNIQUE (sala_id, fecha, franja) en la base de datos, y no una consulta previa en el código de la aplicación. 
+Aunque varias réplicas lean de forma concurrente que el turno está libre antes de insertar, el motor de base de datos hace valer la restricción UNIQUE de forma atómica al escribir: solo la primera inserción logra persistirse
+(201) y las demás colisionan y son rechazadas (409), garantizando que quede exactamente un registro.
+
+
+## Punto 9 del tp6: recreación de reservas-db
+`reservas-db` está desplegado como un `Deployment` sin un volumen persistente asociado. Al eliminar su Pod (`kubectl delete pod -l app=reservas-db -n reservas-app`) y esperar a que se recree, MySQL inicializa un directorio de datos nuevo desde cero: se pierden todas las reservas cargadas e incluso las tablas creadas dinámicamente tras el arranque anterior (`ERROR 1146: Table 'reservasdb.reservas' doesn't exist` hasta que la aplicación vuelva a crearlas). Esta limitación queda declarada explícitamente y se resolverá en la **Semana 7** mediante un volumen persistente (`PersistentVolume` / `PersistentVolumeClaim`).
