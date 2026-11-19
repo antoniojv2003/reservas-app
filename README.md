@@ -357,3 +357,9 @@ se obtuvo una respuesta exitosa y operativa que confirma tanto la salud de la AP
 Para comprobar la autorreparación del sistema, se eliminó de forma manual una réplica específica de la API mediante su nombre, ejecutando en paralelo kubectl get pods -w para observar la respuesta del clúster. 
 Se comprobó que Kubernetes recreó el pod de inmediato para mantener el estado deseado de réplicas, mientras que la aplicación web y el servicio de depuración continuaron respondiendo sin interrupciones gracias 
 al balanceo interno y a la réplica restante, contrastando con la falta de alta disponibilidad nativa observada en los contenedores aislados de Docker Compose en la semana 5.
+
+
+## Punto 7 del tp6: rolling update
+Para resolver el punto 7, se construyó y publicó en el registro la imagen antoniojv03/reservas-api:v2 pasando --build-arg APP_VERSION=v2, y se comentó la variable APP_VERSION forzada en el manifiesto del Deployment
+para que el contenedor tomara la versión definida en la imagen. Tras aplicar la actualización progresiva y revisar el historial y el estado del despliegue, se comprobó que el indicador de versión del frontend cambió 
+de v1 a v2 y luego volvió a v1 al ejecutar el rollback.
