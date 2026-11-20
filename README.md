@@ -408,3 +408,11 @@ Se creó el `PersistentVolumeClaim` `reservas-db-pvc` de `1Gi` en modo `ReadWrit
 * **Estado del PVC:** Al aplicarlo quedó en `Pending` por el modo de enlace `WaitForFirstConsumer` (el PV se aprovisiona al crearse el primer Pod que lo consume) y pasó a `Bound` (`pvc-f0a90915-a826-48ec-b56b-57d9322089b8`) al levantarse el Pod.
 * **Error deliberado:** Con un Pod `busybox` (`restartPolicy: Never`) se escribió `/datos/viejo.txt` y luego se eliminó el Pod. Al aplicar `reservas-db` montando el PVC en `/var/lib/mysql` **sin `subPath`**, el Pod falló con `the data directory has files in it. Aborting.` porque MySQL exige inicializar un directorio vacío.
 * **Resolución con `subPath`:** Se configuró `mountPath: /var/lib/mysql` con `subPath: mysql` en `deploy-reservas-db.yaml`, aislando los archivos de MySQL en el subdirectorio `mysql` del volumen y permitiendo que el Pod inicie en estado `Running` (`1/1`).
+
+
+## Punto 6 del tp7: comprobación de persistencia y cierre de la limitación previa
+
+Se verificó que los datos persisten tras eliminar y recrear el Pod de la base de datos:
+
+* **Prueba de persistencia:** Se creó una reserva desde el navegador (`responsable: "Sistemas Operativos"`, `motivo: "punto 6 tp 7"`), se eliminó el Pod de `reservas-db` (`kubectl delete pod -l app=reservas-db -n reservas-app`), se esperó a que el Deployment recreara el Pod en estado `Running` y se comprobó mediante `curl -s http://172.16.21.21:30501/reservas` (y desde la interfaz web) que la reserva permaneció intacta.
+* **Cierre de limitación de la entrega anterior:** Gracias a `reservas-db-pvc` (`1Gi`, `ReadWriteOnce`, `local-path`) montado con `subPath: mysql` en `/var/lib/mysql`, queda resuelta la limitación declarada en la entrega anterior respecto a la pérdida de datos al recrearse o reiniciarse el Pod de MySQL.
