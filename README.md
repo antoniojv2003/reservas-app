@@ -373,3 +373,12 @@ Aunque varias réplicas lean de forma concurrente que el turno está libre antes
 
 ## Punto 9 del tp6: recreación de reservas-db
 `reservas-db` está desplegado como un `Deployment` sin un volumen persistente asociado. Al eliminar su Pod (`kubectl delete pod -l app=reservas-db -n reservas-app`) y esperar a que se recree, MySQL inicializa un directorio de datos nuevo desde cero: se pierden todas las reservas cargadas e incluso las tablas creadas dinámicamente tras el arranque anterior (`ERROR 1146: Table 'reservasdb.reservas' doesn't exist` hasta que la aplicación vuelva a crearlas). Esta limitación queda declarada explícitamente y se resolverá en la **Semana 7** mediante un volumen persistente (`PersistentVolume` / `PersistentVolumeClaim`).
+
+
+## Puntos 1, 2 y 3 del tp7: creación de configmap y secret
+
+En el namespace `reservas-app` se crearon y aplicaron dos `ConfigMap` y un `Secret` para extraer configuraciones y credenciales de los manifiestos de la aplicación[cite: 6].
+
+* **`reservas-api-config` (`ConfigMap`):** Define `DB_HOST` (`"reservas-db"`), `DB_PORT` (`"3306"`), `DB_NAME` (`"reservasdb"`), `PORT` (`"3000"`) y `SEED_DEMO` (`"true"`). Se centralizan los parámetros no sensibles de la API como cadenas de texto y se omite `APP_VERSION` para no sobrescribir el valor fijado al construir la imagen.
+* **`reservas-frontend-config` (`ConfigMap`):** Define `API_HOST` (`"reservas-api"`) y `API_PORT` (`"3000"`). Se cumple la regla de no dejar valores de configuración literales dentro de los manifiestos de despliegue.
+* **`reservas-db-secret` (`Secret`):** Almacena `MYSQL_USER` (`"reservas_user"`), `MYSQL_PASSWORD` (`"reservas_pass"`) y `MYSQL_ROOT_PASSWORD` (`"reservas_root_pass"`). Al decodificar `MYSQL_PASSWORD` con `base64 -d` se obtiene el valor en texto claro, comprobando que un `Secret` no está cifrado; para que ese dato esté realmente protegido hace falta cifrado en reposo en `etcd`, o bien un gestor de secretos externo.
