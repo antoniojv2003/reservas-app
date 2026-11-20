@@ -18,14 +18,14 @@ spec:
       containers:
         - name: reservas-db
           image: mysql:8.4
+          envFrom:
+            - secretRef:
+                name: reservas-db-secret
           env:
-            - name: MYSQL_ROOT_PASSWORD
-              value: "reservasa_root_pass"
             - name: MYSQL_DATABASE
-              value: "reservasdb"
-            - name: MYSQL_USER
-              value: "reservas_user"
-            - name: MYSQL_PASSWORD
-              value: "reservas_pass"
+              valueFrom:
+                configMapKeyRef:
+                  name: reservas-api-config
+                  key: DB_NAME
           ports:
             - containerPort: 3306

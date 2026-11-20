@@ -16,12 +16,10 @@ spec:
         app: reservas-frontend
     spec:
       containers:
-      - image: antoniojv03/reservas-frontend:v1
-        name: reservas-frontend
-        ports:
-        - containerPort: 8080
-        env:
-        - name: API_HOST
-          value: "reservas-api"
-        - name: API_PORT
-          value: "3000"
+        - name: reservas-frontend
+          image: antoniojv03/reservas-frontend:v1
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: reservas-frontend-config

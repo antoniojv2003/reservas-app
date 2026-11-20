@@ -382,3 +382,20 @@ En el namespace `reservas-app` se crearon y aplicaron dos `ConfigMap` y un `Secr
 * **`reservas-api-config` (`ConfigMap`):** Define `DB_HOST` (`"reservas-db"`), `DB_PORT` (`"3306"`), `DB_NAME` (`"reservasdb"`), `PORT` (`"3000"`) y `SEED_DEMO` (`"true"`). Se centralizan los parámetros no sensibles de la API como cadenas de texto y se omite `APP_VERSION` para no sobrescribir el valor fijado al construir la imagen.
 * **`reservas-frontend-config` (`ConfigMap`):** Define `API_HOST` (`"reservas-api"`) y `API_PORT` (`"3000"`). Se cumple la regla de no dejar valores de configuración literales dentro de los manifiestos de despliegue.
 * **`reservas-db-secret` (`Secret`):** Almacena `MYSQL_USER` (`"reservas_user"`), `MYSQL_PASSWORD` (`"reservas_pass"`) y `MYSQL_ROOT_PASSWORD` (`"reservas_root_pass"`). Al decodificar `MYSQL_PASSWORD` con `base64 -d` se obtiene el valor en texto claro, comprobando que un `Secret` no está cifrado; para que ese dato esté realmente protegido hace falta cifrado en reposo en `etcd`, o bien un gestor de secretos externo.
+
+
+## Punto 4 del tp7: refactorización de los Deployments con ConfigMaps y Secrets
+
+Se actualizaron los tres manifiestos de Deployment en el namespace `reservas-app` para eliminar por completo los valores de configuración y credenciales literales, resolviendo la diferencia entre los nombres de variables que espera la aplicación y los que utiliza la imagen oficial de MySQL:
+
+* **`deploy-reservas-db.yaml`:** Consume todo el `Secret` `reservas-db-secret` mediante `envFrom` (`secretRef`) para obtener `MYSQL_USER`, `MYSQL_PASSWORD` y `MYSQL_ROOT_PASSWORD`, y toma `MYSQL_DATABASE` desde la clave `DB_NAME` de `reservas-api-config` mediante `valueFrom.configMapKeyRef`.
+* **`deploy-reservas-api.yaml`:** Carga `DB_HOST`, `DB_PORT`, `DB_NAME`, `PORT` y `SEED_DEMO` desde `reservas-api-config` mediante `envFrom` (`configMapRef`), y mapea las credenciales almacenadas en `reservas-db-secret` hacia los nombres que espera la API usando `valueFrom.secretKeyRef` (`DB_USER` ← `MYSQL_USER` y `DB_PASSWORD` ← `MYSQL_PASSWORD`).
+* **`deploy-reservas-frontend.yaml`:** Carga `API_HOST` y `API_PORT` desde `reservas-frontend-config` mediante `envFrom` (`configMapRef`).
+
+### Verificación en los Pods
+
+Se comprobó mediante `kubectl exec ... -- env` que las variables de entorno llegan correctamente a cada capa del despliegue:
+
+* **Backend (`reservas-api`):** `DB_HOST=reservas-db`, `DB_PORT=3306`, `DB_NAME=reservasdb`, `DB_USER=reservas_user`.
+* **Base de datos (`reservas-db`):** `MYSQL_USER=reservas_user`, `MYSQL_DATABASE=reservasdb`.
+* **Frontend (`reservas-frontend`):** `API_HOST=reservas-api`, `API_PORT=3000`.
