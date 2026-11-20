@@ -29,3 +29,11 @@ spec:
                   key: DB_NAME
           ports:
             - containerPort: 3306
+          volumeMounts:
+            - name: datos
+              mountPath: /var/lib/mysql
+              subPath: mysql
+      volumes:
+        - name: datos
+          persistentVolumeClaim:
+            claimName: reservas-db-pvc

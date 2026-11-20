@@ -399,3 +399,12 @@ Se comprobó mediante `kubectl exec ... -- env` que las variables de entorno lle
 * **Backend (`reservas-api`):** `DB_HOST=reservas-db`, `DB_PORT=3306`, `DB_NAME=reservasdb`, `DB_USER=reservas_user`.
 * **Base de datos (`reservas-db`):** `MYSQL_USER=reservas_user`, `MYSQL_DATABASE=reservasdb`.
 * **Frontend (`reservas-frontend`):** `API_HOST=reservas-api`, `API_PORT=3000`.
+
+
+## Punto 5 del tp7: `reservas-db-pvc`, error deliberado y `subPath: mysql`
+
+Se creó el `PersistentVolumeClaim` `reservas-db-pvc` de `1Gi` en modo `ReadWriteOnce` sin especificar `storageClassName`, utilizando la clase por defecto `local-path`:
+
+* **Estado del PVC:** Al aplicarlo quedó en `Pending` por el modo de enlace `WaitForFirstConsumer` (el PV se aprovisiona al crearse el primer Pod que lo consume) y pasó a `Bound` (`pvc-f0a90915-a826-48ec-b56b-57d9322089b8`) al levantarse el Pod.
+* **Error deliberado:** Con un Pod `busybox` (`restartPolicy: Never`) se escribió `/datos/viejo.txt` y luego se eliminó el Pod. Al aplicar `reservas-db` montando el PVC en `/var/lib/mysql` **sin `subPath`**, el Pod falló con `the data directory has files in it. Aborting.` porque MySQL exige inicializar un directorio vacío.
+* **Resolución con `subPath`:** Se configuró `mountPath: /var/lib/mysql` con `subPath: mysql` en `deploy-reservas-db.yaml`, aislando los archivos de MySQL en el subdirectorio `mysql` del volumen y permitiendo que el Pod inicie en estado `Running` (`1/1`).
