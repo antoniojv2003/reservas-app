@@ -418,10 +418,27 @@ Se verificó que los datos persisten tras eliminar y recrear el Pod de la base d
 * **Cierre de limitación de la entrega anterior:** Gracias a `reservas-db-pvc` (`1Gi`, `ReadWriteOnce`, `local-path`) montado con `subPath: mysql` en `/var/lib/mysql`, queda resuelta la limitación declarada en la entrega anterior respecto a la pérdida de datos al recrearse o reiniciarse el Pod de MySQL.
 
 
-### Punto 7 del tp7: Ingress (`reservas-app-ingress`) y verificación de rutas
+## Punto 7 del tp7: Ingress (`reservas-app-ingress`) y verificación de rutas
 
 Se configuró el recurso `Ingress` `reservas-app-ingress` en el namespace `reservas-app` con `host: reservas.local` y una única regla (`/`) dirigida a `reservas-frontend:8080` (`172.16.21.224` en `/etc/hosts`):
 
 * **Decisión de diseño (sin regla `/api`):** El contenedor del frontend ya ejecuta nginx haciendo el proxy inverso hacia la API. Duplicar el enrutamiento con una regla `/api` en el `Ingress` crearía dos fuentes de verdad para una misma decisión de routing y rompería la paridad con Docker Compose, donde no existe `Ingress`.
 * **Verificación válida (`/api/reservas`):** `curl -s http://reservas.local/api/reservas` responde con el JSON de reservas desde la base de datos.
 * **Falso positivo silencioso (`/reservas`):** `curl -s -i http://reservas.local/reservas` responde `200 OK` con `text/html` (`index.html`) debido a `try_files` de la aplicación SPA, lo que explica por qué no sirve como comprobación válida de la API.
+
+
+## Punto 8 del TP 7: Inventario de objetos (11 actuales / 12 en la octava entrega)
+
+* **`reservas-db` (`Deployment`):** Mantiene en ejecución la base de datos MySQL y recrea su Pod ante fallos o eliminaciones.
+* **`reservas-db` (`Service` / `ClusterIP`):** Expone internamente el puerto `3306` de MySQL para la comunicación dentro del clúster.
+* **`reservas-db-pvc` (`PersistentVolumeClaim`):** Solicita `1Gi` de almacenamiento persistente (`local-path`, `ReadWriteOnce`) para conservar los datos de MySQL en `subPath: mysql`.
+* **`reservas-api` (`Deployment`):** Gestiona las réplicas del servicio backend de reservas y asegura su disponibilidad continua.
+* **`reservas-api` (`Service` / `ClusterIP`):** Provee un punto de red interno estable en el puerto `3000` hacia los Pods de la API.
+* **`reservas-api-nodeport` (`Service` / `NodePort`):** Expone el puerto `3000` de la API hacia el nodo (`30501`) para acceso directo de prueba.
+* **`reservas-frontend` (`Deployment`):** Administra las réplicas del frontend SPA y su servidor nginx interno con proxy hacia la API.
+* **`reservas-frontend` (`Service` / `NodePort`):** Expone el puerto `8080` del frontend (`30301` en el nodo) y actúa como destino interno del Ingress.
+* **`reservas-app-ingress` (`Ingress`):** Enruta las solicitudes HTTP para `reservas.local` en `/` hacia `reservas-frontend:8080`.
+* **`reservas-api-config` (`ConfigMap`):** Almacena parámetros de configuración no sensibles consumidos por el backend de reservas.
+* **`reservas-db-secret` (`Secret`):** Almacena las credenciales de la base de datos utilizadas por MySQL y la API.
+
+> **Nota:** En la octava entrega el conjunto pasará a ser de **12** objetos (en el clúster también figura `reservas-frontend-config` como `ConfigMap` adicional del frontend).
