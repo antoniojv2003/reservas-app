@@ -416,3 +416,12 @@ Se verificó que los datos persisten tras eliminar y recrear el Pod de la base d
 
 * **Prueba de persistencia:** Se creó una reserva desde el navegador (`responsable: "Sistemas Operativos"`, `motivo: "punto 6 tp 7"`), se eliminó el Pod de `reservas-db` (`kubectl delete pod -l app=reservas-db -n reservas-app`), se esperó a que el Deployment recreara el Pod en estado `Running` y se comprobó mediante `curl -s http://172.16.21.21:30501/reservas` (y desde la interfaz web) que la reserva permaneció intacta.
 * **Cierre de limitación de la entrega anterior:** Gracias a `reservas-db-pvc` (`1Gi`, `ReadWriteOnce`, `local-path`) montado con `subPath: mysql` en `/var/lib/mysql`, queda resuelta la limitación declarada en la entrega anterior respecto a la pérdida de datos al recrearse o reiniciarse el Pod de MySQL.
+
+
+### Punto 7 del tp7: Ingress (`reservas-app-ingress`) y verificación de rutas
+
+Se configuró el recurso `Ingress` `reservas-app-ingress` en el namespace `reservas-app` con `host: reservas.local` y una única regla (`/`) dirigida a `reservas-frontend:8080` (`172.16.21.224` en `/etc/hosts`):
+
+* **Decisión de diseño (sin regla `/api`):** El contenedor del frontend ya ejecuta nginx haciendo el proxy inverso hacia la API. Duplicar el enrutamiento con una regla `/api` en el `Ingress` crearía dos fuentes de verdad para una misma decisión de routing y rompería la paridad con Docker Compose, donde no existe `Ingress`.
+* **Verificación válida (`/api/reservas`):** `curl -s http://reservas.local/api/reservas` responde con el JSON de reservas desde la base de datos.
+* **Falso positivo silencioso (`/reservas`):** `curl -s -i http://reservas.local/reservas` responde `200 OK` con `text/html` (`index.html`) debido a `try_files` de la aplicación SPA, lo que explica por qué no sirve como comprobación válida de la API.
