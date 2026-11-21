@@ -441,4 +441,5 @@ Se configuró el recurso `Ingress` `reservas-app-ingress` en el namespace `reser
 * **`reservas-api-config` (`ConfigMap`):** Almacena parámetros de configuración no sensibles consumidos por el backend de reservas.
 * **`reservas-db-secret` (`Secret`):** Almacena las credenciales de la base de datos utilizadas por MySQL y la API.
 
-> **Nota:** En la octava entrega el conjunto pasará a ser de **12** objetos (en el clúster también figura `reservas-frontend-config` como `ConfigMap` adicional del frontend).
+> **Nota 1:** En la octava entrega el conjunto pasará a ser de **12** objetos (en el clúster también figura `reservas-frontend-config` como `ConfigMap` adicional del frontend).
+> **Nota 2:** En la realidad hay 12 objetos, pero es porque el service de NodePort de la api se aplicó de forma separada al service de ClusterIP
