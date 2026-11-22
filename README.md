@@ -479,3 +479,11 @@ Se creó el manifiesto `k8s/reservas-api-hpa.yaml` con el recurso `reservas-api-
 
 * **Objeto número 12 del proyecto:** incorpora el autoescalador horizontal sobre la capa de API, completando los doce objetos de la octava entrega.
 * **Criterio del umbral (`50%` de CPU):** establece un punto intermedio para que dos réplicas atiendan el tráfico habitual sin escalar por picos mínimos, pero reaccionando con margen ante una carga sostenida hacia un máximo de seis réplicas.
+
+
+## Punto 3 del tp8: Prueba de autoescalado bajo carga real
+
+Para validar el funcionamiento del `HorizontalPodAutoscaler` (`reservas-api-hpa`) en condiciones reales, se generó tráfico HTTP sostenido desde dentro del clúster contra el endpoint `http://reservas-api:3000/reservas` —que ejecuta una consulta combinada entre tablas en MySQL y demanda CPU de forma apreciable— mediante Pods temporales basados en `busybox` (`carga-1` a `carga-4`) ejecutando peticiones en bucle continuo, mientras se monitoreaban en paralelo `kubectl get hpa -n reservas-app -w` y `kubectl top pods -n reservas-app`.
+
+* **Fase de escalado (scale-up):** partiendo de un consumo base en reposo de entre `0%` y `1%` de CPU con `2` réplicas activas, la carga concurrente elevó la utilización por encima del objetivo del `50%` (alcanzando picos superiores al `240%`–`279%`), provocando que el controlador incrementara progresivamente las réplicas de `2` a `4` y luego hasta el máximo configurado de `6` réplicas para distribuir la demanda.
+* **Fase de reducción (scale-down):** una vez eliminados los Pods generadores de carga (`kubectl delete pod`), el consumo de CPU descendió nuevamente por debajo del umbral y, tras cumplirse la ventana de estabilización del HPA, el despliegue redujo gradualmente la cantidad de réplicas hasta retornar al mínimo de `2` Pods activos.
