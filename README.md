@@ -377,7 +377,7 @@ Aunque varias réplicas lean de forma concurrente que el turno está libre antes
 
 ## Puntos 1, 2 y 3 del tp7: creación de configmap y secret
 
-En el namespace `reservas-app` se crearon y aplicaron dos `ConfigMap` y un `Secret` para extraer configuraciones y credenciales de los manifiestos de la aplicación[cite: 6].
+En el namespace `reservas-app` se crearon y aplicaron dos `ConfigMap` y un `Secret` para extraer configuraciones y credenciales de los manifiestos de la aplicación.
 
 * **`reservas-api-config` (`ConfigMap`):** Define `DB_HOST` (`"reservas-db"`), `DB_PORT` (`"3306"`), `DB_NAME` (`"reservasdb"`), `PORT` (`"3000"`) y `SEED_DEMO` (`"true"`). Se centralizan los parámetros no sensibles de la API como cadenas de texto y se omite `APP_VERSION` para no sobrescribir el valor fijado al construir la imagen.
 * **`reservas-frontend-config` (`ConfigMap`):** Define `API_HOST` (`"reservas-api"`) y `API_PORT` (`"3000"`). Se cumple la regla de no dejar valores de configuración literales dentro de los manifiestos de despliegue.
@@ -523,7 +523,7 @@ Para evitar conflictos de propiedad o colisiones con recursos residuales de entr
 ```bash
 kubectl delete namespace reservas-app --wait=true
 helm install reservas-app ./reservas-app -n reservas-app --create-namespace
-
+```
 
 ## Punto 7 del tp8: Ciclo de release (`upgrade`, `history` y `rollback`)
 
