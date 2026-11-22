@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: {{ .Values.frontend.name }}
+  name: {{ .Values.frontend.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  ports:
+    - name: 8080-8080
+      nodePort: {{ .Values.frontend.service.nodePort }}
+      port: {{ .Values.frontend.port }}
+      protocol: TCP
+      targetPort: {{ .Values.frontend.port }}
+  selector:
+    app: {{ .Values.frontend.name }}
+  type: {{ .Values.frontend.service.type }}

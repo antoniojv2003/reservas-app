@@ -1,0 +1,6 @@
+apiVersion: v2
+name: reservas-app
+description: Chart de Helm para reservas-app (frontend, api, db, ingress y hpa)
+type: application
+version: 0.1.0
+appVersion: "v1"

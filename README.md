@@ -427,7 +427,7 @@ Se configuró el recurso `Ingress` `reservas-app-ingress` en el namespace `reser
 * **Falso positivo silencioso (`/reservas`):** `curl -s -i http://reservas.local/reservas` responde `200 OK` con `text/html` (`index.html`) debido a `try_files` de la aplicación SPA, lo que explica por qué no sirve como comprobación válida de la API.
 
 
-## Punto 8 del TP 7: Inventario de objetos (11 actuales / 12 en la octava entrega)
+## Punto 8 del tp7: Inventario de objetos (11 actuales / 12 en la octava entrega)
 
 * **`reservas-db` (`Deployment`):** Mantiene en ejecución la base de datos MySQL y recrea su Pod ante fallos o eliminaciones.
 * **`reservas-db` (`Service` / `ClusterIP`):** Expone internamente el puerto `3306` de MySQL para la comunicación dentro del clúster.
@@ -443,3 +443,94 @@ Se configuró el recurso `Ingress` `reservas-app-ingress` en el namespace `reser
 
 > **Nota 1:** En la octava entrega el conjunto pasará a ser de **12** objetos (en el clúster también figura `reservas-frontend-config` como `ConfigMap` adicional del frontend).
 > **Nota 2:** En la realidad hay 12 objetos, pero es porque el service de NodePort de la api se aplicó de forma separada al service de ClusterIP
+> **Nota 3:** Se corrigió la cantidad de objetos de Kubernetes eliminando los servicios separados (`reservas-api` de tipo `ClusterIP` y `reservas-api-nodeport` de tipo `NodePort`) y aplicando un único servicio `reservas-api` de tipo `NodePort` (puerto `3000`, `nodePort: 30501`). Con esto se conservó el acceso interno por DNS y el acceso externo por `NodePort`, dejando exactamente **11** objetos actuales previos a la octava entrega (donde pasarán a ser **12**):
+
+- **`reservas-db` (`Deployment`):** Mantiene en ejecución la base de datos MySQL y recrea su Pod ante fallos o eliminaciones.
+- **`reservas-db` (`Service` / `ClusterIP`):** Expone internamente el puerto `3306` de MySQL para la comunicación dentro del clúster.
+- **`reservas-db-pvc` (`PersistentVolumeClaim`):** Solicita `1Gi` de almacenamiento persistente (`local-path`, `ReadWriteOnce`) para conservar los datos de MySQL en `subPath: mysql`.
+- **`reservas-api` (`Deployment`):** Gestiona las réplicas del servicio backend de reservas y asegura su disponibilidad continua.
+- **`reservas-api` (`Service` / `NodePort`):** Expone el puerto `3000` de la API internamente en el clúster y en el puerto `30501` del nodo.
+- **`reservas-frontend` (`Deployment`):** Administra las réplicas del frontend SPA y su servidor nginx interno con proxy hacia la API.
+- **`reservas-frontend` (`Service` / `NodePort`):** Expone el puerto `8080` del frontend (`30301` en el nodo) y actúa como destino interno del Ingress.
+- **`reservas-app-ingress` (`Ingress`):** Enruta las solicitudes HTTP para `reservas.local` en `/` hacia `reservas-frontend:8080`.
+- **`reservas-api-config` (`ConfigMap`):** Almacena parámetros de configuración no sensibles consumidos por el backend de reservas.
+- **`reservas-frontend-config` (`ConfigMap`):** Almacena parámetros de configuración no sensibles utilizados por el frontend.
+- **`reservas-db-secret` (`Secret`):** Almacena las credenciales de acceso a la base de datos utilizadas por MySQL y la API.
+
+## Correcciones previas a la resolución del tp8
+
+Antes de comenzar con el TP 8 (incorporación del HPA como objeto número 12 y empaquetado con Helm), se consolidó la capa de servicios de la API para mantener un único punto de entrada unificado y ajustar el inventario base del proyecto:
+
+* **Unificación del servicio de la API:** se eliminaron los servicios anteriores (`reservas-api` de tipo `ClusterIP` y `reservas-api-nodeport` de tipo `NodePort`) junto con el manifiesto `k8s/svc-reservas-api.yaml`, renombrando el manifiesto de `NodePort` a `k8s/svc-reservas-api.yaml` y aplicando un único `Service` llamado `reservas-api` de tipo `NodePort` (puerto `3000`, `nodePort: 30501`). De este modo se conserva la compatibilidad DNS con `reservas-frontend-config` (`API_HOST: "reservas-api"`, `API_PORT: "3000"`), se mantiene el acceso externo por `NodePort` y el conjunto de objetos propios de la aplicación queda en **11** (dejando lugar al **HPA** como objeto número 12).
+* **Restauración de conectividad tras el cambio de servicio:** luego de recrear el `Service` `reservas-api`, las consultas a `http://reservas.local/api/reservas` devolvían `504 Gateway Time-out` desde el NGINX interno del frontend debido a que el proxy mantenía el estado/resolución anterior del upstream. Se ejecutó `kubectl rollout restart deployment/reservas-frontend -n reservas-app` (y se verificó con `kubectl rollout status`), restableciendo la resolución y el proxy hacia `reservas-api` y confirmando nuevamente la respuesta esperada vía `curl`.
+
+
+## Punto 1 del tp8: Declaración de `resources.requests` y `resources.limits` en `reservas-api`
+
+Se actualizó el manifiesto `k8s/deploy-reservas-api.yaml` para incorporar la especificación de `resources` en el contenedor `reservas-api` (`requests`: `100m` de CPU y `128Mi` de memoria; `limits`: `300m` de CPU y `256Mi` de memoria), se aplicó el cambio con `kubectl apply` y se verificó el despliegue con `kubectl rollout status` y `kubectl get pods`.
+
+* **Habilitación del cálculo de métricas en el HPA:** declarar `resources.requests` (en especial `cpu: "100m"`) resulta indispensable para que el `HorizontalPodAutoscaler` cuente con un valor base contra el cual calcular el porcentaje de utilización de CPU y no permanezca en `<unknown>`.
+* **Criterio de dimensionamiento:** `100m` de CPU y `128Mi` de memoria establecen un piso acorde a una API en Node.js y Express para el scheduling y el cálculo de métricas, mientras que `300m` de CPU y `256Mi` de memoria otorgan margen ante picos de consultas sin comprometer la estabilidad del nodo.
+
+
+## Punto 2 del tp8: Creación del `HorizontalPodAutoscaler` (`reservas-api-hpa`)
+
+Se creó el manifiesto `k8s/reservas-api-hpa.yaml` con el recurso `reservas-api-hpa` (`autoscaling/v2`) apuntando a `Deployment/reservas-api`, configurando `minReplicas: 2`, `maxReplicas: 6` y un objetivo de utilización media de CPU del `50%`. Tras aplicarlo con `kubectl apply`, se verificó mediante `kubectl get hpa -n reservas-app` que la métrica se informa correctamente (`TARGETS` mostrando el porcentaje numérico y no `<unknown>`).
+
+* **Objeto número 12 del proyecto:** incorpora el autoescalador horizontal sobre la capa de API, completando los doce objetos de la octava entrega.
+* **Criterio del umbral (`50%` de CPU):** establece un punto intermedio para que dos réplicas atiendan el tráfico habitual sin escalar por picos mínimos, pero reaccionando con margen ante una carga sostenida hacia un máximo de seis réplicas.
+
+
+## Punto 3 del tp8: Prueba de autoescalado bajo carga real
+
+Para validar el funcionamiento del `HorizontalPodAutoscaler` (`reservas-api-hpa`) en condiciones reales, se generó tráfico HTTP sostenido desde dentro del clúster contra el endpoint `http://reservas-api:3000/reservas` —que ejecuta una consulta combinada entre tablas en MySQL y demanda CPU de forma apreciable— mediante Pods temporales basados en `busybox` (`carga-1` a `carga-4`) ejecutando peticiones en bucle continuo, mientras se monitoreaban en paralelo `kubectl get hpa -n reservas-app -w` y `kubectl top pods -n reservas-app`.
+
+* **Fase de escalado (scale-up):** partiendo de un consumo base en reposo de entre `0%` y `1%` de CPU con `2` réplicas activas, la carga concurrente elevó la utilización por encima del objetivo del `50%` (alcanzando picos superiores al `240%`–`279%`), provocando que el controlador incrementara progresivamente las réplicas de `2` a `4` y luego hasta el máximo configurado de `6` réplicas para distribuir la demanda.
+* **Fase de reducción (scale-down):** una vez eliminados los Pods generadores de carga (`kubectl delete pod`), el consumo de CPU descendió nuevamente por debajo del umbral y, tras cumplirse la ventana de estabilización del HPA, el despliegue redujo gradualmente la cantidad de réplicas hasta retornar al mínimo de `2` Pods activos.
+
+
+## Punto 4 del tp8: Consolidación del Chart de Helm (`reservas-app/`)
+
+Se estructuró el Chart de Helm `reservas-app/` con `Chart.yaml`, `values.yaml` y doce plantillas individuales en `reservas-app/templates/`, consolidando exactamente los doce objetos requeridos para el despliegue:
+
+* **Deployments (3):** `deployment-reservas-frontend.yaml`, `deployment-reservas-api.yaml` y `deployment-reservas-db.yaml`
+* **Services (3):** `service-reservas-frontend.yaml` (`NodePort` en puerto `8080` y `nodePort: 30301`), `service-reservas-api.yaml` (`ClusterIP` en puerto `3000`) y `service-reservas-db.yaml` (`ClusterIP` en puerto `3306`)
+* **ConfigMaps (2):** `configmap-reservas-frontend.yaml` y `configmap-reservas-api.yaml`
+* **Secret (1):** `secret-reservas-db.yaml`
+* **PersistentVolumeClaim (1):** `pvc-reservas-db.yaml`
+* **Ingress (1):** `ingress-reservas-app.yaml` (enrutando el host `reservas.local` hacia `reservas-frontend:8080`)
+* **HorizontalPodAutoscaler (1):** `hpa-reservas-api.yaml`
+
+Se dejó excluido del Chart el `Service` `reservas-api-nodeport` (correspondiente a la depuración de la sexta entrega) así como los manifiestos sueltos de `Pod`, manteniendo en `k8s/` el manifiesto `svc-reservas-api-nodeport.yaml` únicamente como referencia histórica y dejando `reservas-api` como `ClusterIP` en el estado activo.
+
+---
+
+## Punto 5 del tp8: Parametrización en `values.yaml`
+
+Se centralizaron en `reservas-app/values.yaml` las configuraciones del despliegue y se conectaron mediante expresiones `{{ .Values.... }}` en las plantillas de `templates/`, asegurando que los parámetros clave sean modificables sin alterar los manifiestos base:
+
+* **Tags de imágenes propias:** `frontend.image.tag` (`v1`) y `api.image.tag` (`v1`), junto con sus respectivos repositorios y la imagen de base de datos (`mysql:8.4`).
+* **Cantidad de réplicas:** `frontend.replicas` (`2`), `api.replicas` (`2`) y `db.replicas` (`1`).
+* **Umbrales del autoescalador:** `api.hpa.minReplicas` (`2`), `api.hpa.maxReplicas` (`6`) y `api.hpa.targetCPUUtilizationPercentage` (`50`), además de los `resources` (`requests` y `limits`) de `reservas-api`, puertos, variables de configuración, credenciales de base de datos, almacenamiento del PVC y host del Ingress.
+
+
+## Punto 6 del tp8: Validación del renderizado e instalación de la release
+
+Antes de instalar en el clúster, se validó la sintaxis y el renderizado del Chart mediante `helm lint` (0 errores) y `helm template reservas-app ./reservas-app -n reservas-app`, confirmando la generación exacta de los **12 objetos** (`Secret`, `ConfigMap` x2, `PersistentVolumeClaim`, `Service` x3, `Deployment` x3, `HorizontalPodAutoscaler` e `Ingress`).
+
+Para evitar conflictos de propiedad o colisiones con recursos residuales de entregas anteriores (5.ª a 7.ª) en el namespace `reservas-app`, se eliminó el namespace previo y se instaló la release limpiamente con `--create-namespace`:
+
+```bash
+kubectl delete namespace reservas-app --wait=true
+helm install reservas-app ./reservas-app -n reservas-app --create-namespace
+
+
+## Punto 7 del tp8: Ciclo de release (`upgrade`, `history` y `rollback`)
+
+Se ejecutó el ciclo completo de actualización y reversión sobre la release `reservas-app` en el namespace `reservas-app`:
+
+1. **Actualización (`helm upgrade`):** se actualizó la release modificando el tag de la imagen de la API a `v2` (`--set api.image.tag=v2`), verificando el cambio en el indicador de versión de la aplicación en el navegador (capturas *antes* y *después* del upgrade).
+2. **Consulta de historial (`helm history`):** se inspeccionaron las revisiones registradas por Helm (`1` con la instalación inicial, `2` con el upgrade a `v2` y `3` tras revertir a la revisión `1`).
+3. **Reversión (`helm rollback`):** se volvió hacia la revisión `1` (`helm rollback reservas-app 1 -n reservas-app`), quedando la revisión `3` en estado `deployed` con la configuración original y confirmando en el navegador el retorno a la versión anterior.
+
+> **Observación:** Modificar el tag de la imagen de la API (`api.image.tag`) no modifica el tag de la imagen del frontend (`frontend.image.tag`), ya que se trata de dos imágenes distintas con ciclos de vida y despliegues independientes.
