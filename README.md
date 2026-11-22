@@ -471,3 +471,11 @@ Se actualizó el manifiesto `k8s/deploy-reservas-api.yaml` para incorporar la es
 
 * **Habilitación del cálculo de métricas en el HPA:** declarar `resources.requests` (en especial `cpu: "100m"`) resulta indispensable para que el `HorizontalPodAutoscaler` cuente con un valor base contra el cual calcular el porcentaje de utilización de CPU y no permanezca en `<unknown>`.
 * **Criterio de dimensionamiento:** `100m` de CPU y `128Mi` de memoria establecen un piso acorde a una API en Node.js y Express para el scheduling y el cálculo de métricas, mientras que `300m` de CPU y `256Mi` de memoria otorgan margen ante picos de consultas sin comprometer la estabilidad del nodo.
+
+
+## Punto 2 del tp8: Creación del `HorizontalPodAutoscaler` (`reservas-api-hpa`)
+
+Se creó el manifiesto `k8s/reservas-api-hpa.yaml` con el recurso `reservas-api-hpa` (`autoscaling/v2`) apuntando a `Deployment/reservas-api`, configurando `minReplicas: 2`, `maxReplicas: 6` y un objetivo de utilización media de CPU del `50%`. Tras aplicarlo con `kubectl apply`, se verificó mediante `kubectl get hpa -n reservas-app` que la métrica se informa correctamente (`TARGETS` mostrando el porcentaje numérico y no `<unknown>`).
+
+* **Objeto número 12 del proyecto:** incorpora el autoescalador horizontal sobre la capa de API, completando los doce objetos de la octava entrega.
+* **Criterio del umbral (`50%` de CPU):** establece un punto intermedio para que dos réplicas atiendan el tráfico habitual sin escalar por picos mínimos, pero reaccionando con margen ante una carga sostenida hacia un máximo de seis réplicas.
