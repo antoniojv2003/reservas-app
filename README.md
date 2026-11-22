@@ -373,3 +373,73 @@ Aunque varias réplicas lean de forma concurrente que el turno está libre antes
 
 ## Punto 9 del tp6: recreación de reservas-db
 `reservas-db` está desplegado como un `Deployment` sin un volumen persistente asociado. Al eliminar su Pod (`kubectl delete pod -l app=reservas-db -n reservas-app`) y esperar a que se recree, MySQL inicializa un directorio de datos nuevo desde cero: se pierden todas las reservas cargadas e incluso las tablas creadas dinámicamente tras el arranque anterior (`ERROR 1146: Table 'reservasdb.reservas' doesn't exist` hasta que la aplicación vuelva a crearlas). Esta limitación queda declarada explícitamente y se resolverá en la **Semana 7** mediante un volumen persistente (`PersistentVolume` / `PersistentVolumeClaim`).
+
+
+## Puntos 1, 2 y 3 del tp7: creación de configmap y secret
+
+En el namespace `reservas-app` se crearon y aplicaron dos `ConfigMap` y un `Secret` para extraer configuraciones y credenciales de los manifiestos de la aplicación[cite: 6].
+
+* **`reservas-api-config` (`ConfigMap`):** Define `DB_HOST` (`"reservas-db"`), `DB_PORT` (`"3306"`), `DB_NAME` (`"reservasdb"`), `PORT` (`"3000"`) y `SEED_DEMO` (`"true"`). Se centralizan los parámetros no sensibles de la API como cadenas de texto y se omite `APP_VERSION` para no sobrescribir el valor fijado al construir la imagen.
+* **`reservas-frontend-config` (`ConfigMap`):** Define `API_HOST` (`"reservas-api"`) y `API_PORT` (`"3000"`). Se cumple la regla de no dejar valores de configuración literales dentro de los manifiestos de despliegue.
+* **`reservas-db-secret` (`Secret`):** Almacena `MYSQL_USER` (`"reservas_user"`), `MYSQL_PASSWORD` (`"reservas_pass"`) y `MYSQL_ROOT_PASSWORD` (`"reservas_root_pass"`). Al decodificar `MYSQL_PASSWORD` con `base64 -d` se obtiene el valor en texto claro, comprobando que un `Secret` no está cifrado; para que ese dato esté realmente protegido hace falta cifrado en reposo en `etcd`, o bien un gestor de secretos externo.
+
+
+## Punto 4 del tp7: refactorización de los Deployments con ConfigMaps y Secrets
+
+Se actualizaron los tres manifiestos de Deployment en el namespace `reservas-app` para eliminar por completo los valores de configuración y credenciales literales, resolviendo la diferencia entre los nombres de variables que espera la aplicación y los que utiliza la imagen oficial de MySQL:
+
+* **`deploy-reservas-db.yaml`:** Consume todo el `Secret` `reservas-db-secret` mediante `envFrom` (`secretRef`) para obtener `MYSQL_USER`, `MYSQL_PASSWORD` y `MYSQL_ROOT_PASSWORD`, y toma `MYSQL_DATABASE` desde la clave `DB_NAME` de `reservas-api-config` mediante `valueFrom.configMapKeyRef`.
+* **`deploy-reservas-api.yaml`:** Carga `DB_HOST`, `DB_PORT`, `DB_NAME`, `PORT` y `SEED_DEMO` desde `reservas-api-config` mediante `envFrom` (`configMapRef`), y mapea las credenciales almacenadas en `reservas-db-secret` hacia los nombres que espera la API usando `valueFrom.secretKeyRef` (`DB_USER` ← `MYSQL_USER` y `DB_PASSWORD` ← `MYSQL_PASSWORD`).
+* **`deploy-reservas-frontend.yaml`:** Carga `API_HOST` y `API_PORT` desde `reservas-frontend-config` mediante `envFrom` (`configMapRef`).
+
+### Verificación en los Pods
+
+Se comprobó mediante `kubectl exec ... -- env` que las variables de entorno llegan correctamente a cada capa del despliegue:
+
+* **Backend (`reservas-api`):** `DB_HOST=reservas-db`, `DB_PORT=3306`, `DB_NAME=reservasdb`, `DB_USER=reservas_user`.
+* **Base de datos (`reservas-db`):** `MYSQL_USER=reservas_user`, `MYSQL_DATABASE=reservasdb`.
+* **Frontend (`reservas-frontend`):** `API_HOST=reservas-api`, `API_PORT=3000`.
+
+
+## Punto 5 del tp7: `reservas-db-pvc`, error deliberado y `subPath: mysql`
+
+Se creó el `PersistentVolumeClaim` `reservas-db-pvc` de `1Gi` en modo `ReadWriteOnce` sin especificar `storageClassName`, utilizando la clase por defecto `local-path`:
+
+* **Estado del PVC:** Al aplicarlo quedó en `Pending` por el modo de enlace `WaitForFirstConsumer` (el PV se aprovisiona al crearse el primer Pod que lo consume) y pasó a `Bound` (`pvc-f0a90915-a826-48ec-b56b-57d9322089b8`) al levantarse el Pod.
+* **Error deliberado:** Con un Pod `busybox` (`restartPolicy: Never`) se escribió `/datos/viejo.txt` y luego se eliminó el Pod. Al aplicar `reservas-db` montando el PVC en `/var/lib/mysql` **sin `subPath`**, el Pod falló con `the data directory has files in it. Aborting.` porque MySQL exige inicializar un directorio vacío.
+* **Resolución con `subPath`:** Se configuró `mountPath: /var/lib/mysql` con `subPath: mysql` en `deploy-reservas-db.yaml`, aislando los archivos de MySQL en el subdirectorio `mysql` del volumen y permitiendo que el Pod inicie en estado `Running` (`1/1`).
+
+
+## Punto 6 del tp7: comprobación de persistencia y cierre de la limitación previa
+
+Se verificó que los datos persisten tras eliminar y recrear el Pod de la base de datos:
+
+* **Prueba de persistencia:** Se creó una reserva desde el navegador (`responsable: "Sistemas Operativos"`, `motivo: "punto 6 tp 7"`), se eliminó el Pod de `reservas-db` (`kubectl delete pod -l app=reservas-db -n reservas-app`), se esperó a que el Deployment recreara el Pod en estado `Running` y se comprobó mediante `curl -s http://172.16.21.21:30501/reservas` (y desde la interfaz web) que la reserva permaneció intacta.
+* **Cierre de limitación de la entrega anterior:** Gracias a `reservas-db-pvc` (`1Gi`, `ReadWriteOnce`, `local-path`) montado con `subPath: mysql` en `/var/lib/mysql`, queda resuelta la limitación declarada en la entrega anterior respecto a la pérdida de datos al recrearse o reiniciarse el Pod de MySQL.
+
+
+## Punto 7 del tp7: Ingress (`reservas-app-ingress`) y verificación de rutas
+
+Se configuró el recurso `Ingress` `reservas-app-ingress` en el namespace `reservas-app` con `host: reservas.local` y una única regla (`/`) dirigida a `reservas-frontend:8080` (`172.16.21.224` en `/etc/hosts`):
+
+* **Decisión de diseño (sin regla `/api`):** El contenedor del frontend ya ejecuta nginx haciendo el proxy inverso hacia la API. Duplicar el enrutamiento con una regla `/api` en el `Ingress` crearía dos fuentes de verdad para una misma decisión de routing y rompería la paridad con Docker Compose, donde no existe `Ingress`.
+* **Verificación válida (`/api/reservas`):** `curl -s http://reservas.local/api/reservas` responde con el JSON de reservas desde la base de datos.
+* **Falso positivo silencioso (`/reservas`):** `curl -s -i http://reservas.local/reservas` responde `200 OK` con `text/html` (`index.html`) debido a `try_files` de la aplicación SPA, lo que explica por qué no sirve como comprobación válida de la API.
+
+
+## Punto 8 del TP 7: Inventario de objetos (11 actuales / 12 en la octava entrega)
+
+* **`reservas-db` (`Deployment`):** Mantiene en ejecución la base de datos MySQL y recrea su Pod ante fallos o eliminaciones.
+* **`reservas-db` (`Service` / `ClusterIP`):** Expone internamente el puerto `3306` de MySQL para la comunicación dentro del clúster.
+* **`reservas-db-pvc` (`PersistentVolumeClaim`):** Solicita `1Gi` de almacenamiento persistente (`local-path`, `ReadWriteOnce`) para conservar los datos de MySQL en `subPath: mysql`.
+* **`reservas-api` (`Deployment`):** Gestiona las réplicas del servicio backend de reservas y asegura su disponibilidad continua.
+* **`reservas-api` (`Service` / `ClusterIP`):** Provee un punto de red interno estable en el puerto `3000` hacia los Pods de la API.
+* **`reservas-api-nodeport` (`Service` / `NodePort`):** Expone el puerto `3000` de la API hacia el nodo (`30501`) para acceso directo de prueba.
+* **`reservas-frontend` (`Deployment`):** Administra las réplicas del frontend SPA y su servidor nginx interno con proxy hacia la API.
+* **`reservas-frontend` (`Service` / `NodePort`):** Expone el puerto `8080` del frontend (`30301` en el nodo) y actúa como destino interno del Ingress.
+* **`reservas-app-ingress` (`Ingress`):** Enruta las solicitudes HTTP para `reservas.local` en `/` hacia `reservas-frontend:8080`.
+* **`reservas-api-config` (`ConfigMap`):** Almacena parámetros de configuración no sensibles consumidos por el backend de reservas.
+* **`reservas-db-secret` (`Secret`):** Almacena las credenciales de la base de datos utilizadas por MySQL y la API.
+
+> **Nota 1:** En la octava entrega el conjunto pasará a ser de **12** objetos (en el clúster también figura `reservas-frontend-config` como `ConfigMap` adicional del frontend).
+> **Nota 2:** En la realidad hay 12 objetos, pero es porque el service de NodePort de la api se aplicó de forma separada al service de ClusterIP
