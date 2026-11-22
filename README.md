@@ -463,3 +463,11 @@ Antes de comenzar con el TP 8 (incorporación del HPA como objeto número 12 y e
 
 * **Unificación del servicio de la API:** se eliminaron los servicios anteriores (`reservas-api` de tipo `ClusterIP` y `reservas-api-nodeport` de tipo `NodePort`) junto con el manifiesto `k8s/svc-reservas-api.yaml`, renombrando el manifiesto de `NodePort` a `k8s/svc-reservas-api.yaml` y aplicando un único `Service` llamado `reservas-api` de tipo `NodePort` (puerto `3000`, `nodePort: 30501`). De este modo se conserva la compatibilidad DNS con `reservas-frontend-config` (`API_HOST: "reservas-api"`, `API_PORT: "3000"`), se mantiene el acceso externo por `NodePort` y el conjunto de objetos propios de la aplicación queda en **11** (dejando lugar al **HPA** como objeto número 12).
 * **Restauración de conectividad tras el cambio de servicio:** luego de recrear el `Service` `reservas-api`, las consultas a `http://reservas.local/api/reservas` devolvían `504 Gateway Time-out` desde el NGINX interno del frontend debido a que el proxy mantenía el estado/resolución anterior del upstream. Se ejecutó `kubectl rollout restart deployment/reservas-frontend -n reservas-app` (y se verificó con `kubectl rollout status`), restableciendo la resolución y el proxy hacia `reservas-api` y confirmando nuevamente la respuesta esperada vía `curl`.
+
+
+## Punto 1 del tp8: Declaración de `resources.requests` y `resources.limits` en `reservas-api`
+
+Se actualizó el manifiesto `k8s/deploy-reservas-api.yaml` para incorporar la especificación de `resources` en el contenedor `reservas-api` (`requests`: `100m` de CPU y `128Mi` de memoria; `limits`: `300m` de CPU y `256Mi` de memoria), se aplicó el cambio con `kubectl apply` y se verificó el despliegue con `kubectl rollout status` y `kubectl get pods`.
+
+* **Habilitación del cálculo de métricas en el HPA:** declarar `resources.requests` (en especial `cpu: "100m"`) resulta indispensable para que el `HorizontalPodAutoscaler` cuente con un valor base contra el cual calcular el porcentaje de utilización de CPU y no permanezca en `<unknown>`.
+* **Criterio de dimensionamiento:** `100m` de CPU y `128Mi` de memoria establecen un piso acorde a una API en Node.js y Express para el scheduling y el cálculo de métricas, mientras que `300m` de CPU y `256Mi` de memoria otorgan margen ante picos de consultas sin comprometer la estabilidad del nodo.
