@@ -512,3 +512,14 @@ Se centralizaron en `reservas-app/values.yaml` las configuraciones del despliegu
 * **Tags de imágenes propias:** `frontend.image.tag` (`v1`) y `api.image.tag` (`v1`), junto con sus respectivos repositorios y la imagen de base de datos (`mysql:8.4`).
 * **Cantidad de réplicas:** `frontend.replicas` (`2`), `api.replicas` (`2`) y `db.replicas` (`1`).
 * **Umbrales del autoescalador:** `api.hpa.minReplicas` (`2`), `api.hpa.maxReplicas` (`6`) y `api.hpa.targetCPUUtilizationPercentage` (`50`), además de los `resources` (`requests` y `limits`) de `reservas-api`, puertos, variables de configuración, credenciales de base de datos, almacenamiento del PVC y host del Ingress.
+
+
+## Punto 6 del tp8: Validación del renderizado e instalación de la release
+
+Antes de instalar en el clúster, se validó la sintaxis y el renderizado del Chart mediante `helm lint` (0 errores) y `helm template reservas-app ./reservas-app -n reservas-app`, confirmando la generación exacta de los **12 objetos** (`Secret`, `ConfigMap` x2, `PersistentVolumeClaim`, `Service` x3, `Deployment` x3, `HorizontalPodAutoscaler` e `Ingress`).
+
+Para evitar conflictos de propiedad o colisiones con recursos residuales de entregas anteriores (5.ª a 7.ª) en el namespace `reservas-app`, se eliminó el namespace previo y se instaló la release limpiamente con `--create-namespace`:
+
+```bash
+kubectl delete namespace reservas-app --wait=true
+helm install reservas-app ./reservas-app -n reservas-app --create-namespace
