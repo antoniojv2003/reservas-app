@@ -1,0 +1,70 @@
+namespace: reservas-app
+
+frontend:
+  name: reservas-frontend
+  replicas: 2
+  image:
+    repository: antoniojv03/reservas-frontend
+    tag: v1
+  port: 8080
+  service:
+    type: NodePort
+    nodePort: 30301
+  config:
+    API_HOST: "reservas-api"
+    API_PORT: "3000"
+
+api:
+  name: reservas-api
+  replicas: 2
+  image:
+    repository: antoniojv03/reservas-api
+    tag: v1
+  port: 3000
+  service:
+    type: ClusterIP
+  config:
+    DB_HOST: "reservas-db"
+    DB_PORT: "3306"
+    DB_NAME: "reservasdb"
+    PORT: "3000"
+    SEED_DEMO: "true"
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "300m"
+      memory: "256Mi"
+  hpa:
+    name: reservas-api-hpa
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 50
+
+db:
+  name: reservas-db
+  replicas: 1
+  image:
+    repository: mysql
+    tag: "8.4"
+  port: 3306
+  service:
+    type: ClusterIP
+  pvc:
+    name: reservas-db-pvc
+    accessMode: ReadWriteOnce
+    storage: 1Gi
+  secret:
+    name: reservas-db-secret
+    MYSQL_USER: "reservas_user"
+    MYSQL_PASSWORD: "reservas_pass"
+    MYSQL_ROOT_PASSWORD: "reservas_root_pass"
+
+ingress:
+  name: reservas-app-ingress
+  host: reservas.local
+  path: /
+  pathType: Prefix
+  serviceName: reservas-frontend
+  servicePort: 8080

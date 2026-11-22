@@ -487,3 +487,28 @@ Para validar el funcionamiento del `HorizontalPodAutoscaler` (`reservas-api-hpa`
 
 * **Fase de escalado (scale-up):** partiendo de un consumo base en reposo de entre `0%` y `1%` de CPU con `2` réplicas activas, la carga concurrente elevó la utilización por encima del objetivo del `50%` (alcanzando picos superiores al `240%`–`279%`), provocando que el controlador incrementara progresivamente las réplicas de `2` a `4` y luego hasta el máximo configurado de `6` réplicas para distribuir la demanda.
 * **Fase de reducción (scale-down):** una vez eliminados los Pods generadores de carga (`kubectl delete pod`), el consumo de CPU descendió nuevamente por debajo del umbral y, tras cumplirse la ventana de estabilización del HPA, el despliegue redujo gradualmente la cantidad de réplicas hasta retornar al mínimo de `2` Pods activos.
+
+
+## Punto 4 del tp8: Consolidación del Chart de Helm (`reservas-app/`)
+
+Se estructuró el Chart de Helm `reservas-app/` con `Chart.yaml`, `values.yaml` y doce plantillas individuales en `reservas-app/templates/`, consolidando exactamente los doce objetos requeridos para el despliegue:
+
+* **Deployments (3):** `deployment-reservas-frontend.yaml`, `deployment-reservas-api.yaml` y `deployment-reservas-db.yaml`
+* **Services (3):** `service-reservas-frontend.yaml` (`NodePort` en puerto `8080` y `nodePort: 30301`), `service-reservas-api.yaml` (`ClusterIP` en puerto `3000`) y `service-reservas-db.yaml` (`ClusterIP` en puerto `3306`)
+* **ConfigMaps (2):** `configmap-reservas-frontend.yaml` y `configmap-reservas-api.yaml`
+* **Secret (1):** `secret-reservas-db.yaml`
+* **PersistentVolumeClaim (1):** `pvc-reservas-db.yaml`
+* **Ingress (1):** `ingress-reservas-app.yaml` (enrutando el host `reservas.local` hacia `reservas-frontend:8080`)
+* **HorizontalPodAutoscaler (1):** `hpa-reservas-api.yaml`
+
+Se dejó excluido del Chart el `Service` `reservas-api-nodeport` (correspondiente a la depuración de la sexta entrega) así como los manifiestos sueltos de `Pod`, manteniendo en `k8s/` el manifiesto `svc-reservas-api-nodeport.yaml` únicamente como referencia histórica y dejando `reservas-api` como `ClusterIP` en el estado activo.
+
+---
+
+## Punto 5 del tp8: Parametrización en `values.yaml`
+
+Se centralizaron en `reservas-app/values.yaml` las configuraciones del despliegue y se conectaron mediante expresiones `{{ .Values.... }}` en las plantillas de `templates/`, asegurando que los parámetros clave sean modificables sin alterar los manifiestos base:
+
+* **Tags de imágenes propias:** `frontend.image.tag` (`v1`) y `api.image.tag` (`v1`), junto con sus respectivos repositorios y la imagen de base de datos (`mysql:8.4`).
+* **Cantidad de réplicas:** `frontend.replicas` (`2`), `api.replicas` (`2`) y `db.replicas` (`1`).
+* **Umbrales del autoescalador:** `api.hpa.minReplicas` (`2`), `api.hpa.maxReplicas` (`6`) y `api.hpa.targetCPUUtilizationPercentage` (`50`), además de los `resources` (`requests` y `limits`) de `reservas-api`, puertos, variables de configuración, credenciales de base de datos, almacenamiento del PVC y host del Ingress.
