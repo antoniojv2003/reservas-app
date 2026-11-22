@@ -523,3 +523,14 @@ Para evitar conflictos de propiedad o colisiones con recursos residuales de entr
 ```bash
 kubectl delete namespace reservas-app --wait=true
 helm install reservas-app ./reservas-app -n reservas-app --create-namespace
+
+
+## Punto 7 del tp8: Ciclo de release (`upgrade`, `history` y `rollback`)
+
+Se ejecutó el ciclo completo de actualización y reversión sobre la release `reservas-app` en el namespace `reservas-app`:
+
+1. **Actualización (`helm upgrade`):** se actualizó la release modificando el tag de la imagen de la API a `v2` (`--set api.image.tag=v2`), verificando el cambio en el indicador de versión de la aplicación en el navegador (capturas *antes* y *después* del upgrade).
+2. **Consulta de historial (`helm history`):** se inspeccionaron las revisiones registradas por Helm (`1` con la instalación inicial, `2` con el upgrade a `v2` y `3` tras revertir a la revisión `1`).
+3. **Reversión (`helm rollback`):** se volvió hacia la revisión `1` (`helm rollback reservas-app 1 -n reservas-app`), quedando la revisión `3` en estado `deployed` con la configuración original y confirmando en el navegador el retorno a la versión anterior.
+
+> **Observación:** Modificar el tag de la imagen de la API (`api.image.tag`) no modifica el tag de la imagen del frontend (`frontend.image.tag`), ya que se trata de dos imágenes distintas con ciclos de vida y despliegues independientes.
