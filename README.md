@@ -427,7 +427,7 @@ Se configuró el recurso `Ingress` `reservas-app-ingress` en el namespace `reser
 * **Falso positivo silencioso (`/reservas`):** `curl -s -i http://reservas.local/reservas` responde `200 OK` con `text/html` (`index.html`) debido a `try_files` de la aplicación SPA, lo que explica por qué no sirve como comprobación válida de la API.
 
 
-## Punto 8 del TP 7: Inventario de objetos (11 actuales / 12 en la octava entrega)
+## Punto 8 del tp7: Inventario de objetos (11 actuales / 12 en la octava entrega)
 
 * **`reservas-db` (`Deployment`):** Mantiene en ejecución la base de datos MySQL y recrea su Pod ante fallos o eliminaciones.
 * **`reservas-db` (`Service` / `ClusterIP`):** Expone internamente el puerto `3306` de MySQL para la comunicación dentro del clúster.
@@ -443,3 +443,23 @@ Se configuró el recurso `Ingress` `reservas-app-ingress` en el namespace `reser
 
 > **Nota 1:** En la octava entrega el conjunto pasará a ser de **12** objetos (en el clúster también figura `reservas-frontend-config` como `ConfigMap` adicional del frontend).
 > **Nota 2:** En la realidad hay 12 objetos, pero es porque el service de NodePort de la api se aplicó de forma separada al service de ClusterIP
+> **Nota 3:** Se corrigió la cantidad de objetos de Kubernetes eliminando los servicios separados (`reservas-api` de tipo `ClusterIP` y `reservas-api-nodeport` de tipo `NodePort`) y aplicando un único servicio `reservas-api` de tipo `NodePort` (puerto `3000`, `nodePort: 30501`). Con esto se conservó el acceso interno por DNS y el acceso externo por `NodePort`, dejando exactamente **11** objetos actuales previos a la octava entrega (donde pasarán a ser **12**):
+
+- **`reservas-db` (`Deployment`):** Mantiene en ejecución la base de datos MySQL y recrea su Pod ante fallos o eliminaciones.
+- **`reservas-db` (`Service` / `ClusterIP`):** Expone internamente el puerto `3306` de MySQL para la comunicación dentro del clúster.
+- **`reservas-db-pvc` (`PersistentVolumeClaim`):** Solicita `1Gi` de almacenamiento persistente (`local-path`, `ReadWriteOnce`) para conservar los datos de MySQL en `subPath: mysql`.
+- **`reservas-api` (`Deployment`):** Gestiona las réplicas del servicio backend de reservas y asegura su disponibilidad continua.
+- **`reservas-api` (`Service` / `NodePort`):** Expone el puerto `3000` de la API internamente en el clúster y en el puerto `30501` del nodo.
+- **`reservas-frontend` (`Deployment`):** Administra las réplicas del frontend SPA y su servidor nginx interno con proxy hacia la API.
+- **`reservas-frontend` (`Service` / `NodePort`):** Expone el puerto `8080` del frontend (`30301` en el nodo) y actúa como destino interno del Ingress.
+- **`reservas-app-ingress` (`Ingress`):** Enruta las solicitudes HTTP para `reservas.local` en `/` hacia `reservas-frontend:8080`.
+- **`reservas-api-config` (`ConfigMap`):** Almacena parámetros de configuración no sensibles consumidos por el backend de reservas.
+- **`reservas-frontend-config` (`ConfigMap`):** Almacena parámetros de configuración no sensibles utilizados por el frontend.
+- **`reservas-db-secret` (`Secret`):** Almacena las credenciales de acceso a la base de datos utilizadas por MySQL y la API.
+
+## Correcciones previas a la resolución del tp8
+
+Antes de comenzar con el TP 8 (incorporación del HPA como objeto número 12 y empaquetado con Helm), se consolidó la capa de servicios de la API para mantener un único punto de entrada unificado y ajustar el inventario base del proyecto:
+
+* **Unificación del servicio de la API:** se eliminaron los servicios anteriores (`reservas-api` de tipo `ClusterIP` y `reservas-api-nodeport` de tipo `NodePort`) junto con el manifiesto `k8s/svc-reservas-api.yaml`, renombrando el manifiesto de `NodePort` a `k8s/svc-reservas-api.yaml` y aplicando un único `Service` llamado `reservas-api` de tipo `NodePort` (puerto `3000`, `nodePort: 30501`). De este modo se conserva la compatibilidad DNS con `reservas-frontend-config` (`API_HOST: "reservas-api"`, `API_PORT: "3000"`), se mantiene el acceso externo por `NodePort` y el conjunto de objetos propios de la aplicación queda en **11** (dejando lugar al **HPA** como objeto número 12).
+* **Restauración de conectividad tras el cambio de servicio:** luego de recrear el `Service` `reservas-api`, las consultas a `http://reservas.local/api/reservas` devolvían `504 Gateway Time-out` desde el NGINX interno del frontend debido a que el proxy mantenía el estado/resolución anterior del upstream. Se ejecutó `kubectl rollout restart deployment/reservas-frontend -n reservas-app` (y se verificó con `kubectl rollout status`), restableciendo la resolución y el proxy hacia `reservas-api` y confirmando nuevamente la respuesta esperada vía `curl`.
